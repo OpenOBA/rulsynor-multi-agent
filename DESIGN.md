@@ -22,6 +22,31 @@ properties*, not mechanisms. That maps onto our split: the invariants and vector
 (spec level), the authority state machine is the *how* (engine level). This document commits to
 the *what*; the *how* is our engine, which we keep separate.
 
+**Scope boundary.** This document covers one slice of the RAAI runtime-security model — the
+*Authorize* pillar's delegated-authority problem across multi-agent delegation and capability
+boundaries. Adjacent threats belong to other pillars or layers and are out of scope here, each
+with its own owning mechanism:
+
+- **Prompt injection / context & memory poisoning** → ERDL's SafeExpr closed kernel (no eval, no
+  injection surface) and Rulsynor memory governance — the *Reason/Assess* pillars.
+- **Data exfiltration / sensitive-prompt leakage** → output inspection / DLP — the *Inspect* pillar.
+- **Agent impersonation / credential theft** → agent identity (A2A authentication + workload
+  identity) — partially in scope here as *identity binding* (see §2 refinement 8); the
+  cryptographic issuance itself is an identity-layer concern.
+
+We state this boundary to avoid over-claiming: what follows secures *delegated authority*, not the
+entire agentic runtime.
+
+**Two standing assumptions (stated, not hidden).** Two security properties are assumed as
+infrastructure, not proven here, and every mechanism below depends on them:
+
+1. **Boundary mediation** — every security-sensitive side effect passes through the enforcement
+   boundary (Action Guard / tool-call guard). If a downstream component bypasses the boundary and
+   acts on its own standing credential, the authority model cannot see or stop it.
+2. **Root-anchor integrity** — the Agent Registry (the boundary's local trust anchor for root
+   grants) is itself tamper-evident and correctly configured. If the anchor is corrupted, every
+   authority lineage rooted in it is unsound.
+
 ---
 
 ## 1. Source document — structure and scope (faithful reading)
@@ -57,6 +82,39 @@ his names and definitions (faithfully summarized; full text in the source).
 | **INV-04** Enforcement-Boundary Revocation | `Revoke(P→A) ⇒ Invalidate(unexercised A→B→C)`; boundary checks revocation state |
 | **INV-05** Capability-Boundary Non-Amplification | `EA(Resource,T) ⊆ EA(Tool,T) ⊆ EA(Skill,T) ⊆ EA(Agent,T)` |
 
+**Refinements adopted after co-review round 2.** Your round-2 co-review surfaced two corrections,
+and our own audit of the corrected model surfaced several more. We adopt all of them here:
+
+1. **Authorization basis vs. constraints (INV-01).** Constraints narrow authority; they never
+   *create* it — constraints alone must never manufacture authority. `EA(A,T)` is derived as
+   `Auth(A,T) ∩ C1 ∩ … ∩ Cn`; a constraints block that appears in a valid DO does not by itself
+   grant the authority it names (see §3).
+2. **Freshness is normative, not implementation-defined (INV-04).** A boundary MUST NOT treat the
+   absence of a visible revocation as proof that authority remains valid; if it cannot establish
+   a required freshness condition, it MUST fail closed (see §7 Q7).
+3. **No new authorization root at a capability boundary (INV-05).** Selecting a more privileged
+   downstream skill/tool/resource MUST NOT create a new authorization root; broader authority
+   must originate from an independently verified authorization event in the provenance (your
+   INV-05 wording, which our first mapping had flattened).
+4. **Aggregation non-amplification (INV-01, numeric dimension).** A numeric constraint (`amount`)
+   is a *shared cumulative budget* bound to the origin authorization, not a per-delegation
+   allowance; multiple narrow delegations must not sum past the origin's limit (see §6).
+5. **Fail-closed execution atomicity (INV-04).** The authority check and the gated side effect
+   occur in the same synchronous boundary, so no revocation can land between check and act (see §6).
+6. **Task-scoped credential, not standing credential (INV-05).** At a tool/resource boundary, the
+   side effect executes under the task envelope's authority, never the component's standing
+   credential (see §7 Q5 and §6).
+7. **Delegation authority is itself authorized (INV-01, delegation-depth control).** A DELEGATE
+   action is a privilege, not a default. The authorization basis carries a `delegatable` flag (or
+   a delegation-depth bound); an agent may issue a DELEGATE only if its own basis grants it. This
+   closes the "rogue-agent creation" path — a compromised agent cannot mint a new delegate unless
+   its own authority was delegatable.
+8. **Identity binding, not name binding (INV-02, provenance).** The authorization basis binds the
+   delegatee's *cryptographic identity* (public key / workload identity), not an agent-ID string.
+   Enforcement verifies the executing agent's identity against the bound identity before honoring
+   the authority. This closes the "agent impersonation" path — a rogue agent cannot receive
+   authority by claiming a trusted agent's name.
+
 Vectors: **AV-01** direct amplification, **AV-02** transitive amplification, **AV-03** privileged
 laundering, **AV-04** downstream constraint removal, **AV-05** revoked ancestor, **AV-06**
 capability-boundary laundering, **AV-07** depth/loop violation, **AV-08** temporal replay.
@@ -71,11 +129,29 @@ and loop safety are part of INV-01, not a sixth invariant.
 
 | Your symbol | Meaning | Our primitive (in `rulsynor-spec-v2.0` §10) |
 |---|---|---|
-| `SA(A)` | standing authority | `trust_radius` (岗位权限: level L0–L5, `amount_limit`) in Agent Registry |
-| `EA(A,T)` | effective task authority | the delegation's `constraints` payload (action/resource/purpose/value/temporal/autonomy limits) |
-| `C(T)` | task constraints | the `constraints` block on a DELEGATE action (`deadline`, `max_autonomy`, `escalation_to`, …) |
+| `SA(A)` | standing authority | `trust_radius` (role-scoped permission: level L0–L5, `amount_limit`) in Agent Registry |
+| `Auth(A,T)` | **authorization basis** — where the task's authority *comes from* | a root grant (an Agent Registry `trust_radius` anchor the boundary trusts locally) or an independently verified re-authorization DELEGATE/ASSIGN DO; binds the principal's *cryptographic identity* and carries a `delegatable` flag |
+| `C(T)` | task constraints — how authority is *narrowed* | the `constraints` block on a DELEGATE action (`deadline`, `max_autonomy`, `escalation_to`, …) |
+| `EA(A,T)` | effective task authority — the *derived result* | **derived, never stored**: `Auth(A,T) ∩ C1 ∩ … ∩ Cn` folded over the delegation chain |
 | `D(T)` | delegation lineage | `delegation_chain_seq` + `genesis` + `parent_audit_id` + `execution_trace_id` |
 | enforcement boundary | where a side effect is gated | the deterministic layer (Action Guard / tool-call guard) |
+
+**Three distinct concepts (correction of our earlier mapping).** Effective authority is not a
+stored field, and it is not equal to the constraints payload. It is the *result* of folding a
+set of constraints over an authorization basis. The three concepts must stay distinct:
+
+- **Authorization basis (`Auth`)** — where authority comes from: a root grant or an independently
+  verified re-authorization event. Constraints cannot *create* authority; they can only narrow it.
+  A downstream delegation carrying `{action: delete, resource: *}` does not grant delete authority
+  — it can only narrow whatever basis already authorized.
+- **Constraints (`C`)** — how authority is narrowed at each delegation hop.
+- **Effective authority (`EA`)** — the derived meet: `EA(A,T) = Auth(A,T) ∩ C1 ∩ … ∩ Cn`.
+
+This corrects our earlier §3, which mapped `EA(A,T)` onto "the constraints payload" — flattening
+the narrowing mechanism into the source of authority, so a downstream `constraints` block could
+manufacture authority merely by appearing in a valid DO. The recursive form
+`EA(child,T) = EA(parent,T) ∩ delegated_constraints` is the correct one, with `Auth(A,T)` as its
+base case.
 
 **Corrected claim (rigor).** Your core claim — "standing authority is not necessarily effective
 task authority" (`SA(A) != EA(A,T)`) — is *structural* in our model: `trust_radius` is a standing
@@ -113,10 +189,10 @@ above A2A transport, in the Rulsynor organization layer.
 
 | Invariant | Primary vectors | Expected decision | Minimum verifiable evidence |
 |---|---|---|---|
-| INV-01 | AV-01, AV-02, AV-03, AV-07 | DENY | Effective-authority ceiling, delegation chain, depth/loop state |
-| INV-02 | AV-02, AV-08 | DENY / RE-AUTHORIZE | Authority lineage, event ordering, authorization state |
+| INV-01 | AV-01, AV-02, AV-03, AV-07, AV-09, AV-11 | DENY | Effective-authority ceiling, delegation chain, depth/loop state, cumulative budget |
+| INV-02 | AV-02, AV-08, AV-12 | DENY / RE-AUTHORIZE | Authority lineage, event ordering, authorization state, identity binding |
 | INV-03 | AV-04 | DENY | Inherited constraints + attempted downstream constraints |
-| INV-04 | AV-05 | DENY | Revoked ancestor, derived authority lineage, boundary decision |
+| INV-04 | AV-05, AV-10 | DENY | Revoked ancestor, derived authority lineage, boundary decision, freshness epoch |
 | INV-05 | AV-06 | DENY | Task authority, downstream capability, requested effect, boundary decision |
 
 ---
@@ -125,36 +201,56 @@ above A2A transport, in the Rulsynor organization layer.
 
 | Requirement | Status in §10 | Gap + engineering feasibility |
 |---|---|---|
+| Authorization basis (`Auth`) | ❌ absent — §3 had flattened EA onto constraints | **largest conceptual gap** — add an `authorization_basis` reference (root grant or re-authorization DO id) as the base of the EA derivation; all other gaps hang off this one |
 | INV-01 containment check | ⚠️ structural separation exists, containment check absent | **feasible** — add a delegation-time check that `constraints ⊆ delegator's EA`; the primitives exist |
+| INV-01 aggregation (numeric) | ❌ not defined | **feasible** — bind `amount` to a shared cumulative budget on the origin authorization; reuse the `within`/`rate` state operator |
 | INV-02 provenance | ✅ strong (`parent_audit_id`, `execution_trace_id`, cross-agent audit chain) | formalize as invariant |
 | INV-02 temporal continuity | ⚠️ Phase-4 time-bias is *heuristic WARN*, not a MUST | **feasible** — elevate to attributable DENY on positive replay detection |
+| INV-02 renew = re-authorization | ❌ renew unaddressed | **feasible** — a renewal widens the temporal window; it must pass the same basis verification as re-authorization |
 | INV-03 narrow-only | ⚠️ `constraints` exist, no narrowing check | **feasible** — compare inherited vs. downstream constraints |
 | INV-04 enforcement-boundary revocation | ❌ H10 `Revoke` is single-hop; no propagation to unexercised derived authority | **largest gap** — needs revocation state + boundary check (shared, eventually-consistent state; same track as `within`/`rate` state) |
+| INV-04 freshness (normative) | ❌ freshness was implementation-defined | **feasible** — promote to normative: absence ≠ proof; monotonic authority epoch; fail closed (see §7 Q7) |
+| INV-04 check/act atomicity (TOCTOU) | ⚠️ implicit in synchronous boundary, unstated | **feasible** — state that the authority check and the gated side effect share one synchronous boundary |
+| INV-04 tombstone ↔ re-grant | ❌ re-grant semantics undefined | **feasible** — tombstone matches the exact `revokes` DO id; a re-grant is a new id/new basis, not a resurrection |
 | INV-05 capability boundary | ❌ explicit TODO; Action Guard "block on breach" only | **feasible, medium** — formalize the axis; tool-call guard already gates |
+| INV-05 task-scoped credential | ❌ not stated | **feasible** — boundary enforces that the side effect runs under the task envelope, not the tool's standing credential (boundary-mediation caveat) |
+| Purpose constraint (audit vs enforcement) | ❌ purpose treated as enforceable | **layering** — purpose is semantic and non-decidable; keep it audit-layer (DO provenance), and require an explicit structural mapping (action/resource) if it must be enforced |
+| Delegation authority (who may DELEGATE) | ❌ not stated | **feasible** — add a `delegatable` flag on the basis; DELEGATE validates the issuer's delegatability |
+| Identity binding (impersonation) | ❌ not stated | **feasible** — bind the basis to a cryptographic identity (key), not an agent-ID string; enforcement verifies identity binding |
 | AV-07 depth/loop | ✅ `max_delegation_depth` + loop rejection exist | fold into INV-01 sub-property |
 | AV-08 temporal replay | ❌ not defined | **feasible** — new vector + attributable rejection |
 | Attributable rejection | ✅ Decision Object carries decision + reason; missing `matched_invariant`/`boundary` | **feasible** — two new DO fields |
 
-**Engineering feasibility summary.** Four of the five invariants are *feasible with primitives
-that already exist* (containment check, narrowing check, temporal ordering, attributable
-rejection). The one substantive engineering item is **INV-04 revocation** — it requires a
-distributed, eventually-consistent revocation state consulted at the enforcement boundary, which
-is the same problem as the stateful-operator (`within`/`rate`) shared-state work already in
-progress, so it lands on that track rather than a new one.
+**Engineering feasibility summary.** Of the full gap set, the *only* new data structure is the
+`authorization_basis` reference — everything else reuses primitives that already exist
+(`within`/`rate` state for the cumulative budget, `parent_audit_id`/`execution_trace_id` for
+lineage, `CANCEL`/`REVOKE` for the tombstone, the Action Guard for the boundary). The substantive
+engineering item remains **INV-04 revocation + freshness** — a distributed, eventually-consistent
+revocation state with a monotonic epoch, consulted at the enforcement boundary — which is the same
+problem as the stateful-operator (`within`/`rate`) shared-state work already in progress, so it
+lands on that track rather than a new one.
 
 ---
 
 ## 7. Answers to your co-review questions (Q1–Q8)
 
 **Q1 — Effective Authority Representation.**
-Minimum state = the DELEGATE Decision Object's constraint payload + lineage, hash-anchored.
-`EA(A,T)` is the `constraints` block; `D(T)` is `delegation_chain_seq` + `genesis` +
-`parent_audit_id`. The DO hash makes the envelope tamper-evident.
+Minimum state = the **authorization basis** + the constraint chain + lineage, hash-anchored.
+`EA(A,T)` is *derived*, not stored: `Auth(A,T) ∩ C1 ∩ … ∩ Cn`. What must travel with the task is
+the basis reference (`Auth(A,T)`, pointing at a root grant or an independently verified
+re-authorization DO), plus the constraints accumulated so far, plus the lineage (`D(T)` =
+`delegation_chain_seq` + `genesis` + `parent_audit_id`). The DO hash makes the envelope
+tamper-evident.
 
 **Q2 — Standing Privilege vs. Delegated Authority.**
 Standing authority (`trust_radius`) never becomes available to a delegated task implicitly. The
-only way to widen effective authority is an *independent, explicit* re-authorization event — a new
-DELEGATE/ASSIGN Decision Object with its own audit record. Anything less is AV-01/AV-03 → DENY.
+only way to widen effective authority is an *independent, explicit* re-authorization event — and
+that event must itself be recognized and verified as an **authorization basis**: it must identify
+an authorizing principal/issuer, the granted scope, its validity/revocation state, and evidence
+that the issuer is permitted to grant that scope. A new DELEGATE/ASSIGN DO by itself does *not*
+widen authority; it widens only when independently verified as a legitimate basis. Otherwise a
+downstream actor could treat "a new DO exists" as an authority-expansion primitive. Anything less
+is AV-01/AV-03 → DENY.
 
 **Q3 — Constraint Composition.**
 Intersection / narrowing (your conservative default). The delegate's effective permission is the
@@ -176,10 +272,14 @@ We adopt your §4 framing and commit to a concrete mechanism, not just the prope
    ancestor invalidates *all* authority derived from it — including unexercised downstream
    authority (A→B→C). This is `Revoke(P→A) ⇒ Invalidate(A→B→C)` achieved structurally, by
    checking the whole chain rather than only the immediate parent.
-4. **Fail closed.** If the boundary cannot verify the current revocation state (disconnected or
-   stale), it DENIES (Q6). This is where eventual consistency lives: the tombstone is recorded at
-   the source and reaches boundaries eventually, but the boundary evaluates the freshest state it
-   can access and fails closed.
+4. **Fail closed on unverifiable freshness.** The boundary does NOT treat the *absence* of a
+   revocation tombstone as proof that authority remains valid. Absence proves only that no
+   revocation is visible in the current view. A security-sensitive side effect is permitted only
+   if the boundary can establish that its revocation state is *fresh enough* for the decision
+   (see Q7). If that freshness cannot be established, the boundary MUST fail closed (DENY), even
+   when no tombstone is visible. This is where eventual consistency lives: the tombstone is
+   recorded at the source and reaches boundaries eventually; a boundary whose view is stale is
+   not entitled to authorize on the strength of that staleness.
 
 *Why this is a design, not a deferral.* It reuses primitives we already have — `CANCEL`/`REVOKE`
 as a DO type, `parent_audit_id`/`execution_trace_id` for the lineage, the Action Guard as the
@@ -213,9 +313,25 @@ Fail closed for security-sensitive side effects: if current authority or revocat
 be established, DENY. Consistent with the deterministic-layer posture.
 
 **Q7 — Revocation Freshness.**
-No strong synchronous guarantee across disconnected agents. The normative property is *evaluation
-at the boundary* against the freshest available revocation state; the freshness mechanism stays
-implementation-defined (your §4). Same distributed-state problem as Q4.
+We correct our earlier "implementation-defined" framing. The *mechanism* (how fresh revocation
+state reaches the boundary) stays implementation-defined — bounded leases, monotonic authority
+epochs, signed checkpoints, or versioned state are all acceptable, and the invariant does not
+mandate one. But the *security property* is normative, not implementation-defined:
+
+> An enforcement boundary MUST NOT treat the absence of a visible revocation as proof that
+> authority remains valid, unless the boundary can establish that its revocation state satisfies
+> a required freshness condition. If that freshness cannot be established, security-sensitive
+> effects MUST fail closed.
+
+Concretely: `ALLOW` only if `authority_valid ∧ lineage_valid ∧ revocation_state_fresh_enough`.
+The canonical adversarial case is the stale-negative — authorize, delegate, a boundary caches
+state at epoch N, revocation happens at N+1, and the boundary then receives a protected action
+while still at N. Expected: DENY / AUTHORITY_STATE_UNVERIFIED, not ALLOW. We adopt your
+*fresh-enough* threshold rather than *freshest-available*: the boundary does not need the newest
+revocation state, only one fresh enough to authorize safely. Concretely, with a monotonic
+authority epoch (no trusted wall clock — E9 forbids reading one), "fresh enough" means "the
+boundary's observed revocation epoch ≥ the epoch at which the authority-bearing evidence was last
+confirmed valid".
 
 **Q8 — Capability Boundary Semantics.**
 A *distinct capability-boundary relationship* with equivalent non-amplification semantics, not
@@ -240,21 +356,48 @@ deny-all is not conformance.
 
 ## 9. Integration plan + engineering feasibility
 
+This plan is not a from-scratch design. Every item below reuses machinery we already run — the
+deterministic expression engine, the cross-implementation vector suite, and the SMT verifier — so
+the integration is an extension of an operating system, not a new build.
+
 1. Land the invariants + vectors + conformance assertions as a normative section in
    `rulsynor-spec-v2.0` §10 (cross-cutting the existing H1–H10 / V1–V12 action structure).
-2. Add `matched_invariant` + `boundary` to the Decision Object (attributable rejection).
-3. Close the two real gaps: INV-04 revocation (mechanism designed in §7 Q4 — tombstone + lineage
-   walk + fail closed; the remaining work is the freshness/state substrate, on the shared-state
-   track) and INV-05 capability-boundary formalization.
-4. Emit AV-01…AV-08 as a named conformance vector family — a *new vector format* (property
-   vectors, distinct from the existing byte-identity Decision Object vectors), independently
-   runnable — and we would welcome your independent run of them, the way the Decision Object
-   vectors were verified by independent implementations (e.g. Erik Newton's byte-identical checks).
+2. Add the `authorization_basis` reference as the base case of the EA derivation (the one new
+   data structure — see §6).
+3. Add `matched_invariant` + `boundary` to the Decision Object (attributable rejection).
+4. Close the remaining gaps, ordered by dependency:
+   - **INV-04 revocation + freshness** — tombstone + lineage walk + monotonic authority epoch +
+     fail-closed freshness (mechanism designed in §7 Q4/Q7; the freshness/state substrate lands on
+     the shared-state track with `within`/`rate`).
+   - **INV-01 aggregation** — cumulative-budget state for numeric constraints (same track as above).
+   - **INV-01/INV-03 containment + narrowing checks** — delegation-time and boundary-time checks.
+   - **INV-05 capability-boundary + task-scoped credential** — formalize the axis; enforce the
+     task envelope at the tool/resource boundary (boundary-mediation caveat stated).
+   - **INV-02 renew = re-authorization** and **INV-04 tombstone ↔ re-grant** semantics.
+   - **Purpose layering** — keep purpose audit-layer; document the structural-mapping requirement.
+5. Emit AV-01…AV-12 (plus positive baselines) as a named conformance vector family — a *new vector
+   format* (property vectors, distinct from the existing byte-identity Decision Object vectors),
+   independently runnable — and we would welcome your independent run of them, the way the
+   Decision Object vectors were verified by independent implementations (e.g. Erik Newton's
+   byte-identical checks).
 
-**Open items for your read:** (a) whether INV-02's temporal ordering should be a MUST (we lean
-yes, with attributable rejection on positive replay detection, keeping Phase-4 WARN for
-*unverified* ordering); (b) your comfort with revocation freshness being eventually-consistent +
-boundary-check (Q7), given our current single deterministic boundary.
+**Open design questions for your read.** Four points we would rather settle together than decide
+unilaterally:
+
+1. **Vector format.** The property vectors are a *new* format — a scenario (authorization chain +
+   one controlled violation + expected decision + expected attribution), distinct from the
+   byte-identity Decision Object vectors. We have no precedent to copy; what shape should the
+   scenario carry?
+2. **Conformance standard.** Two independent implementations will agree on the *decision*, but
+   should they also agree on the *attribution* (`matched_invariant` / `boundary` / `reason`)? This
+   determines what "passing" means for an independent runner.
+3. **Stateless vs. stateful split.** Of the 15 vectors, 13 are stateless (10 negative canaries +
+   3 positive baselines — delegation, constraints, identity; no revocation) and 2 are stateful
+   (AV-05 revoked-ancestor, AV-10 stale-negative — revocation + freshness). We propose landing the
+   13 stateless vectors first, then the 2 stateful ones; do you agree with that ordering?
+4. **Revocation freshness mechanism.** For the stateful vectors we lean on a monotonic authority
+   epoch + fail-closed (DENY when freshness cannot be established). Is that an acceptable
+   mechanism, or do you have a stronger preference?
 
 ---
 
@@ -310,3 +453,42 @@ suite structurally lacks positive baselines.
   purpose, temporal). It is a representative single-dimension test, not exhaustive.
 - **AV-06** is sound but the most expensive to implement (full capability chain); a note, not a
   finding.
+
+### Finding 5 — new vectors surfaced by our own corrected-model audit
+
+Correcting `EA(A,T)` from "constraints payload" to "derived meet over a basis" and promoting
+freshness to normative exposed two attack patterns that AV-01…AV-08 do not cover, plus the
+positive baselines Finding 3 calls for. We propose them as additions:
+
+**AV-09 — Aggregation amplification (numeric).**
+Setup: origin authorizes `amount <= $500`; A delegates two narrow tasks to B, each
+`amount <= $500`, under the same origin budget. Attack: B consumes both, for a total of $1,000.
+Expected: DENY on the second exercise (cumulative budget exceeded). Invariant: INV-01
+(aggregation). This vector fails any implementation that treats `amount` as a per-delegation
+allowance rather than a shared cumulative budget.
+
+**AV-10 — Stale-negative revocation (freshness).**
+Setup: `P → A → B → C`; a boundary caches revocation state at epoch N; P revokes P→A at epoch
+N+1; the boundary, still at N, receives C's protected action. Attack: the boundary sees no
+tombstone (it is stale) and authorizes. Expected: DENY / AUTHORITY_STATE_UNVERIFIED, not ALLOW.
+Invariant: INV-04 (freshness). This vector fails any implementation that treats "no visible
+revocation" as proof of continued validity — the canonical stale-negative case.
+
+**AV-11 — Rogue-agent creation (delegation authority).**
+Setup: origin authorizes A with a non-delegatable basis; A, having been compromised, attempts to
+DELEGATE the task to a new agent B. Attack: the DELEGATE succeeds because delegation is treated as
+a default rather than a privilege. Expected: DENY (A's basis is not delegatable). Invariant: INV-01
+(delegation-depth control). This vector fails any implementation that lets any agent mint a
+delegate regardless of whether its own authority was delegatable.
+
+**AV-12 — Agent impersonation (identity binding).**
+Setup: origin authorizes a task to agent B, bound to B's cryptographic identity; a rogue agent C
+claims B's agent-ID string. Attack: C receives the authority because the basis binds a name, not a
+key. Expected: DENY (identity mismatch). Invariant: INV-02 (provenance / identity binding). This
+vector fails any implementation that binds authority to an agent-ID string rather than a
+cryptographic identity.
+
+**Positive baselines (per Finding 3).**
+- a valid delegation within authority → ALLOW;
+- a valid narrowing (e.g. amount $500 → $250) → ALLOW;
+- a valid re-authorization (explicit new authorization) → ALLOW.
