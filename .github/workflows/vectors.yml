@@ -1,0 +1,75 @@
+name: vectors
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    paths:
+      - 'vectors/**'
+      - 'reference/**'
+      - 'submissions/**'
+      - '.github/workflows/vectors.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: ERDL-engine conformance + cross-verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: rulsynor-multi-agent
+
+      # The verdict is produced by the ERDL engine — check it out and build it.
+      - uses: actions/checkout@v4
+        with:
+          repository: OpenOBA/erdl-landing
+          path: erdl-landing
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build ERDL engine (erdl-landing)
+        working-directory: erdl-landing
+        run: |
+          npm ci
+          npm run build
+
+      - name: Reference self-verify (attack → DENY, legal → ALLOW)
+        working-directory: rulsynor-multi-agent
+        run: node reference/runner.mjs
+
+      - name: Full positive/negative suite (consistency + discriminability)
+        working-directory: rulsynor-multi-agent
+        run: node reference/full-test.mjs
+
+      - name: Submission cross-verify e2e (field corruption discrimination)
+        working-directory: rulsynor-multi-agent
+        run: node reference/submission-e2e.test.mjs
+
+      - name: Generate conformance report (auto-record)
+        working-directory: rulsynor-multi-agent
+        run: |
+          node reference/generate-conformance.mjs
+          if ! git diff --exit-code conformance/CONFORMANCE.md; then
+            echo "FAIL: CONFORMANCE.md is stale — commit the regenerated report"
+            exit 1
+          fi
+          echo "PASS: CONFORMANCE.md is current"
+
+      - name: Generate answer oracle (isolated; never committed)
+        working-directory: rulsynor-multi-agent
+        run: node reference/runner.mjs --write-answers answers.json
+
+      - name: Cross-verify third-party runner submissions
+        working-directory: rulsynor-multi-agent
+        run: |
+          if ls submissions/*.json >/dev/null 2>&1; then
+            for f in submissions/*.json; do
+              echo "=== Cross-verifying $f ==="
+              node reference/verify-submission.mjs --submission "$f" --answers answers.json || exit 1
+            done
+          else
+            echo "No runner submissions to cross-verify (only README.md present)."
+          fi
