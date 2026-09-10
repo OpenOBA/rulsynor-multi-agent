@@ -354,6 +354,54 @@ deny-all is not conformance.
 
 ---
 
+## 8a. The ERDL anchor — conformance is produced by the ERDL engine
+
+**This is the load-bearing decision of this document, not an implementation detail.**
+
+Delegated-authority conformance is not a "scenario → expected decision" table handed to a bespoke
+authority state machine. The verdict for each vector MUST be produced by the **ERDL expression
+engine** (`erdl-landing`): the same deterministic `Evaluator.evaluate(rules, context)` that
+governs production agents, emitting the same Decision Object. A vector that does not exercise
+ERDL rule evaluation proves nothing about ERDL.
+
+**The enforcement boundary is a set of ERDL rules.** Each invariant is expressed as one (or a
+small group of) ERDL rule whose `when` condition is the constraint comparison and whose `then`
+action is the conforming decision. The three pilot vectors map directly onto the expression
+layer's native condition operators (`gt` / `ne`, from `OP_COMPARE`) — no new evaluation machinery:
+
+| Vector | ERDL rule (`when → then`) | Context fields the rule reads |
+|---|---|---|
+| AV-01 (INV-01) | `request.level > authorized.level → DENY` | `request.level`, `authorized.level` |
+| AV-04 (INV-03) | `downstream.amount > inherited.amount → DENY` | `downstream.amount`, `inherited.amount` |
+| AV-06 (INV-05) | `request.action ≠ authorized.action → DENY` | `request.action`, `authorized.action` |
+
+Attribution is carried by the rule, not by a side channel: the matched rule's identity encodes
+`matched_invariant`; the injected-violation hop encodes `first_invalid_boundary`. `Evaluator`
+returns the `EvaluationResult` (decision + matched rules); the Decision Object built on it is the
+hash-anchored, replayable proof that the invariant held. This is the ERDL value: the same artifact
+that governs production agents also *proves* the security property — not a parallel implementation
+that happens to agree.
+
+**What "independently runnable" means (correcting §9 item 5).** The vectors are independently
+runnable in the sense that a third party independently implements the *ERDL rule-evaluation
+contract* — as norviq-go and concordia-python independently implement the Decision Object contract
+— and must converge on the same `decision + matched_invariant + first_invalid_boundary`. It does
+**not** mean a bespoke authority state machine written outside ERDL. A runner that reimplements EA
+folding from scratch without evaluating ERDL rules is a parallel system, not an ERDL-conforming
+one.
+
+**Where the organization layer enters — and why the pilot does not need it yet.** The three pilot
+vectors are single-hop constraint comparisons: the "authorized" side of each comparison is
+statically given in the scenario (AV-01's `authorized.level = L2` is fixed by the origin grant),
+so the expression layer alone produces the verdict; no authority state machine is required. The
+organization layer — EA folding across multiple hops, `authorization_basis` resolution, revocation
+propagation — is what *prepares the context* for the later multi-hop vectors (AV-02/AV-09
+aggregation, AV-05/AV-10 revocation): it computes the effective `authorized.*` values that the
+expression layer then compares. The expression layer remains the sole decision authority; the
+organization layer derives its inputs, never the other way around.
+
+---
+
 ## 9. Integration plan + engineering feasibility
 
 This plan is not a from-scratch design. Every item below reuses machinery we already run — the
@@ -376,10 +424,12 @@ the integration is an extension of an operating system, not a new build.
    - **INV-02 renew = re-authorization** and **INV-04 tombstone ↔ re-grant** semantics.
    - **Purpose layering** — keep purpose audit-layer; document the structural-mapping requirement.
 5. Emit AV-01…AV-12 (plus positive baselines) as a named conformance vector family — a *new vector
-   format* (property vectors, distinct from the existing byte-identity Decision Object vectors),
-   independently runnable — and we would welcome your independent run of them, the way the
-   Decision Object vectors were verified by independent implementations (e.g. Erik Newton's
-   byte-identical checks).
+   format* (property vectors, distinct from the existing byte-identity Decision Object vectors).
+   Each vector's verdict is produced by the ERDL expression engine per §8a (ERDL rules over a
+   scenario context, `decision + matched_invariant + first_invalid_boundary` attribution); a
+   third-party runner independently implements that ERDL rule-evaluation contract and converges on
+   the same attribution — the way the Decision Object vectors were independently implemented
+   (e.g. Erik Newton's checks), not a separate authority state machine.
 
 **Open design questions for your read.** Four points we would rather settle together than decide
 unilaterally:
