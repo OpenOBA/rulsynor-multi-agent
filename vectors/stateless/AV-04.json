@@ -1,0 +1,33 @@
+{
+  "id": "AV-04",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-03",
+  "description": "Downstream constraint removal: P grants amount<=500; A delegates to B preserving it; B delegates to C widening amount to 5000.",
+  "rule": {
+    "id": "INV-03_narrow_only_inheritance",
+    "name": "INV-03_narrow_only_inheritance",
+    "description": "A downstream delegation must not widen an inherited constraint",
+    "category": "security",
+    "conditions": [
+      { "expr": { "gt": [{ "field": "downstream.amount" }, { "field": "inherited.amount" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "downstream constraint widens the inherited amount (INV-03)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "downstream.amount": 5000, "inherited.amount": 500 },
+  "legal": { "downstream.amount": 250, "inherited.amount": 500 },
+  "attribution": {
+    "originating_task": "T-refund-0891",
+    "authority_provenance": "P→A→B→C",
+    "violation_hop": "B→C",
+    "requested_action": "refund(amount=5000)",
+    "effective_authority": "refund(amount=500)",
+    "reason": "CONSTRAINT_NARROW_ONLY_VIOLATION"
+  }
+}

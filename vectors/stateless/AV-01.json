@@ -1,0 +1,33 @@
+{
+  "id": "AV-01",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-01",
+  "description": "Direct amplification: P grants A effective L2; A delegates to B; B standing L3; B attempts an L3 action under the L2 task.",
+  "rule": {
+    "id": "INV-01_authority_non_amplification",
+    "name": "INV-01_authority_non_amplification",
+    "description": "A delegatee must not exercise task authority exceeding the delegator's effective authority",
+    "category": "security",
+    "conditions": [
+      { "expr": { "gt": [{ "field": "request.level" }, { "field": "authorized.level" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "requested autonomy level exceeds the delegated effective authority (INV-01)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "request.level": 3, "authorized.level": 2 },
+  "legal": { "request.level": 2, "authorized.level": 2 },
+  "attribution": {
+    "originating_task": "T-refund-0891",
+    "authority_provenance": "P→A→B",
+    "violation_hop": "A→B",
+    "requested_action": "refund(level=L3)",
+    "effective_authority": "refund(level=L2)",
+    "reason": "AUTHORITY_NON_AMPLIFICATION"
+  }
+}

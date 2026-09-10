@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Delegated-Authority Conformance Vector (ERDL-anchored)",
+  "description": "One delegated-authority conformance vector. The verdict is produced by the ERDL expression engine (erdl-landing) evaluating the vector's rule over its scenario context — per DESIGN.md §8a, not a hand-written state machine. Each vector carries an ERDL rule (when constraint-comparison → then DENY), an attack context (violating), a legal context (non-violating baseline), and the expected attribution.",
+  "type": "object",
+  "required": ["id", "family", "profile", "invariant", "rule", "attack", "legal", "expected"],
+  "properties": {
+    "id": { "type": "string", "description": "Vector id, e.g. AV-01" },
+    "family": { "const": "delegated-authority" },
+    "profile": { "enum": ["stateless", "stateful"], "description": "stateless = no revocation/freshness; stateful = AV-05/AV-10 later" },
+    "invariant": { "enum": ["INV-01", "INV-02", "INV-03", "INV-04", "INV-05"] },
+    "description": { "type": "string" },
+    "rule": {
+      "type": "object",
+      "description": "The ERDL rule (RuleDefinition) whose when-condition is the constraint comparison and whose then-action is the conforming decision. The rule id encodes the invariant.",
+      "required": ["id", "name", "conditions", "action", "priority", "enabled"],
+      "properties": {
+        "id": { "type": "string", "description": "Rule id; the invariant is the prefix (e.g. INV-01_...)" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "expr": { "type": "object", "description": "S-expression expression tree (e.g. { gt: [{field}, {field}] })" }
+            }
+          }
+        },
+        "conditionLogic": { "enum": ["AND", "OR"] },
+        "action": {
+          "type": "object",
+          "required": ["decision"],
+          "properties": {
+            "decision": { "type": "string" },
+            "reason": { "type": "string" }
+          }
+        },
+        "priority": { "type": "number" },
+        "enabled": { "type": "boolean" }
+      }
+    },
+    "attack": {
+      "type": "object",
+      "description": "The violating scenario context (fields the rule's condition reads).",
+      "additionalProperties": true
+    },
+    "legal": {
+      "type": "object",
+      "description": "A non-violating context (positive baseline; blocks a deny-all implementation).",
+      "additionalProperties": true
+    },
+    "attribution": {
+      "type": "object",
+      "description": "Scenario attribution (public; per Annam §10 attributable rejection). Engine-derived fields (decision/matched_invariant) are NOT here — they live in the answer oracle.",
+      "required": ["originating_task", "authority_provenance", "violation_hop", "requested_action", "effective_authority", "reason"],
+      "properties": {
+        "originating_task": { "type": "string", "description": "originating task/intent identifier" },
+        "authority_provenance": { "type": "string", "description": "authority lineage, e.g. P→A→B" },
+        "violation_hop": { "type": "string", "description": "first hop where the authority transition became invalid (= first_invalid_boundary)" },
+        "requested_action": { "type": "string", "description": "the protected effect requested, e.g. write(Resource-R)" },
+        "effective_authority": { "type": "string", "description": "the effective task authority, e.g. read(Resource-R)" },
+        "reason": { "type": "string", "description": "machine-readable attribution code (non-normative free text)" }
+      }
+    }
+  }
+}

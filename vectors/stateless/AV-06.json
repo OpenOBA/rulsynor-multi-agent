@@ -1,0 +1,33 @@
+{
+  "id": "AV-06",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-05",
+  "description": "Capability-boundary laundering: B is authorized read(R) only; B invokes Skill S, S invokes Tool T, T (standing capability write) attempts write against R.",
+  "rule": {
+    "id": "INV-05_capability_boundary_non_amplification",
+    "name": "INV-05_capability_boundary_non_amplification",
+    "description": "A downstream component's standing capability must not become task authority",
+    "category": "security",
+    "conditions": [
+      { "expr": { "ne": [{ "field": "request.action" }, { "field": "authorized.action" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "requested action differs from the authorized action (INV-05)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "request.action": "write", "authorized.action": "read" },
+  "legal": { "request.action": "read", "authorized.action": "read" },
+  "attribution": {
+    "originating_task": "T-audit-0421",
+    "authority_provenance": "P→A→B→S→T→R",
+    "violation_hop": "T→R",
+    "requested_action": "write(Resource-R)",
+    "effective_authority": "read(Resource-R)",
+    "reason": "CAPABILITY_BOUNDARY_AUTHORITY_AMPLIFICATION"
+  }
+}
