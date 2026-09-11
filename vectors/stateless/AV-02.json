@@ -1,0 +1,43 @@
+{
+  "id": "AV-02",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-01",
+  "description": "Transitive authority amplification: P→A(L2)→B(L2)→C where C holds L3 standing privileges. Each hop is locally valid, but C's L3 request exceeds the L2 authority transmitted end-to-end through the chain. NOTE: Annam's matrix marks AV-02 as INV-01 + INV-02 — the INV-02 provenance dimension (end-to-end lineage detection) is a supporting invariant, not encoded in the single-valued invariant field (INV-01 primary).",
+  "rule": {
+    "id": "INV-01_transitive_amplification",
+    "name": "INV-01_transitive_amplification",
+    "description": "End-to-end effective authority must not exceed the authority transmitted through the delegation chain",
+    "category": "security",
+    "conditions": [
+      { "expr": { "gt": [{ "field": "request.level" }, { "field": "hop_2_level" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "transitive amplification: end-to-end effective authority exceeds the delegated authority (INV-01)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": {
+    "hop_0_level": 2,
+    "hop_1_level": 2,
+    "hop_2_level": 2,
+    "request.level": 3
+  },
+  "legal": {
+    "hop_0_level": 2,
+    "hop_1_level": 2,
+    "hop_2_level": 2,
+    "request.level": 2
+  },
+  "attribution": {
+    "originating_task": "T-refund-0892",
+    "authority_provenance": "P→A→B→C",
+    "violation_hop": "B→C",
+    "requested_action": "refund(level=L3)",
+    "effective_authority": "refund(level=L2)",
+    "reason": "TRANSITIVE_AUTHORITY_AMPLIFICATION"
+  }
+}

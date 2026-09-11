@@ -7,8 +7,8 @@
   "properties": {
     "id": { "type": "string", "description": "Vector id, e.g. AV-01" },
     "family": { "const": "delegated-authority" },
-    "profile": { "enum": ["stateless", "stateful"], "description": "stateless = no revocation/freshness; stateful = AV-05/AV-10 later" },
-    "invariant": { "enum": ["INV-01", "INV-02", "INV-03", "INV-04", "INV-05"] },
+    "profile": { "enum": ["stateless", "snapshot"], "description": "stateless = no time/revocation semantics (pure current-state fact); snapshot = revocation/temporal semantics modeled by materializing timestamps into the fact (single-evaluate snapshot, NOT an event-history state machine — event-history is a future ERDL extension)" },
+    "invariant": { "enum": ["INV-01", "INV-02", "INV-03", "INV-04", "INV-05"], "description": "Primary invariant (single-valued; the matched_invariant source). Supporting invariants (e.g. AV-02's INV-02) and uncovered variants (e.g. AV-07's loop) are noted in the vector's description." },
     "description": { "type": "string" },
     "rule": {
       "type": "object",

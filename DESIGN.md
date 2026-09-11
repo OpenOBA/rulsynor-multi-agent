@@ -366,14 +366,19 @@ ERDL rule evaluation proves nothing about ERDL.
 
 **The enforcement boundary is a set of ERDL rules.** Each invariant is expressed as one (or a
 small group of) ERDL rule whose `when` condition is the constraint comparison and whose `then`
-action is the conforming decision. The three pilot vectors map directly onto the expression
+action is the conforming decision. The eight vectors (AV-01..AV-08, aligned to the source conformance matrix) map directly onto the expression
 layer's native condition operators (`gt` / `ne`, from `OP_COMPARE`) — no new evaluation machinery:
 
 | Vector | ERDL rule (`when → then`) | Context fields the rule reads |
 |---|---|---|
 | AV-01 (INV-01) | `request.level > authorized.level → DENY` | `request.level`, `authorized.level` |
+| AV-02 (INV-01) | `request.level > hop_2_level → DENY` | `request.level`, `hop_2_level` |
+| AV-03 (INV-01) | `request.action ≠ effective.action → DENY` | `request.action`, `effective.action` |
 | AV-04 (INV-03) | `downstream.amount > inherited.amount → DENY` | `downstream.amount`, `inherited.amount` |
+| AV-05 (INV-04) | `request_t > revocation_t → DENY` | `request_t`, `revocation_t` (snapshot) |
 | AV-06 (INV-05) | `request.action ≠ authorized.action → DENY` | `request.action`, `authorized.action` |
+| AV-07 (INV-01) | `chain_depth > max_depth → DENY` | `chain_depth`, `max_depth` |
+| AV-08 (INV-02) | `accept_t < delegate_t → DENY` | `accept_t`, `delegate_t` (snapshot) |
 
 Attribution is carried by the rule, not by a side channel: the matched rule's identity encodes
 `matched_invariant`; the injected-violation hop encodes `first_invalid_boundary`. `Evaluator`
@@ -390,9 +395,9 @@ contract* — as norviq-go and concordia-python independently implement the Deci
 folding from scratch without evaluating ERDL rules is a parallel system, not an ERDL-conforming
 one.
 
-**Where the organization layer enters — and why the pilot does not need it yet.** The three pilot
-vectors are single-hop constraint comparisons: the "authorized" side of each comparison is
-statically given in the scenario (AV-01's `authorized.level = L2` is fixed by the origin grant),
+**Where the organization layer enters — and why the pilot does not need it yet.** The eight
+vectors are snapshot-evaluated: the "authorized" side of each comparison is statically given in
+the scenario (AV-01's `authorized.level = L2` is fixed by the origin grant),
 so the expression layer alone produces the verdict; no authority state machine is required. The
 organization layer — EA folding across multiple hops, `authorization_basis` resolution, revocation
 propagation — is what *prepares the context* for the later multi-hop vectors (AV-02/AV-09

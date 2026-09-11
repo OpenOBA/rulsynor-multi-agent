@@ -7,8 +7,8 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 
 ## Current vector set
 
-- **Standard**: ERDL delegated-authority invariants (INV-01/03/05), anchored on the ERDL expression engine (DESIGN.md §8a)
-- **Vector files**: `vectors/stateless/*.json` (3-pilot: AV-01 / AV-04 / AV-06)
+- **Standard**: ERDL delegated-authority invariants (INV-01..INV-05), anchored on the ERDL expression engine (DESIGN.md §8a)
+- **Vector files**: `vectors/stateless/*.json` + `vectors/snapshot/*.json` (8 vectors: AV-01..AV-08, aligned to Annam's conformance matrix)
 - **Verifier**: `reference/runner.mjs` (reference implementation, evaluates via erdl-landing) + `reference/verify-submission.mjs`
 - **Answer file**: `answers.json` (`.gitignore`; never exposed to submitters)
 
@@ -17,7 +17,7 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 <!-- registry:auto-begin -->
 | Implementor | Method | Result | Date | Artifact |
 |------------|--------|:-------:|------|---------|
-| **OpenOBA (reference)** | Node.js, @openoba/erdl engine | 3/3 | 2026-09-10 | [runner.mjs](reference/runner.mjs) |
+| **OpenOBA (reference)** | Node.js, @openoba/erdl engine | 8/8 | 2026-09-11 | [runner.mjs](reference/runner.mjs) |
 <!-- registry:auto-end -->
 
 > Third-party runner submission guide: [submissions/README.md](submissions/README.md). After CI cross-verification passes, merges auto-record into the table above.

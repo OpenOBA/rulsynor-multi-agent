@@ -1,0 +1,39 @@
+{
+  "id": "AV-07",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-01",
+  "description": "Delegation depth violation: the implementation permits at most 3 agent-to-agent delegation edges (A→B→C→D is valid). D delegates to E, creating a 4th edge that exceeds the configured depth limit. NOTE: Annam's AV-07 has two attack variants — depth-limit exceeded (covered here) and loop/repeated-element (A→B→C→B, not yet covered).",
+  "rule": {
+    "id": "INV-01_delegation_depth",
+    "name": "INV-01_delegation_depth",
+    "description": "A delegation chain must not exceed the configured maximum delegation depth",
+    "category": "security",
+    "conditions": [
+      { "expr": { "gt": [{ "field": "chain_depth" }, { "field": "max_depth" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "delegation chain depth exceeds the configured maximum (INV-01 depth/loop safety)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": {
+    "chain_depth": 4,
+    "max_depth": 3
+  },
+  "legal": {
+    "chain_depth": 3,
+    "max_depth": 3
+  },
+  "attribution": {
+    "originating_task": "T-delegate-0907",
+    "authority_provenance": "A→B→C→D→E",
+    "violation_hop": "D→E",
+    "requested_action": "delegate(D→E)",
+    "effective_authority": "max depth 3 (4 edges attempted)",
+    "reason": "DELEGATION_DEPTH_VIOLATION"
+  }
+}

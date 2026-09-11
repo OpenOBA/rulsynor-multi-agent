@@ -18,19 +18,27 @@
  * engine, then runs the same comparison logic as verify-submission.mjs against it.
  */
 
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Evaluator } from '../../erdl-landing/dist/index.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const VECTORS_DIR = resolve(__dirname, '..', 'vectors', 'stateless')
+const VECTORS_ROOT = resolve(__dirname, '..', 'vectors')
+const VECTOR_PROFILES = ['stateless', 'snapshot']
 
 const evaluator = new Evaluator()
-const vectors = readdirSync(VECTORS_DIR)
-  .filter((f) => f.endsWith('.json'))
-  .sort()
-  .map((f) => JSON.parse(readFileSync(resolve(VECTORS_DIR, f), 'utf8')))
+const vectors = []
+for (const profile of VECTOR_PROFILES) {
+  const dir = resolve(VECTORS_ROOT, profile)
+  if (!existsSync(dir)) continue
+  for (const f of readdirSync(dir)) {
+    if (f.endsWith('.json')) {
+      vectors.push(JSON.parse(readFileSync(resolve(dir, f), 'utf8')))
+    }
+  }
+}
+vectors.sort((a, b) => String(a.id).localeCompare(String(b.id)))
 const byId = Object.fromEntries(vectors.map((v) => [v.id, v]))
 
 // In-memory answer oracle (engine-derived fields only).
@@ -99,7 +107,7 @@ function check(name, ok, detail = '') {
 // 2. Negative: each field corruption is caught.
 const corruptions = [
   ['wrong decision', (v) => { const c = correct(v); c.decision = c.decision === 'DENY' ? 'ALLOW' : 'DENY'; return c }],
-  ['wrong matched_invariant', (v) => { const c = correct(v); c.matched_invariant = 'INV-02'; return c }],
+  ['wrong matched_invariant', (v) => { const c = correct(v); c.matched_invariant = 'INV-99'; return c }],
   ['wrong first_invalid_boundary', (v) => { const c = correct(v); c.first_invalid_boundary = 'WRONG-HOP'; return c }],
   ['wrong requested_action', (v) => { const c = correct(v); c.requested_action = 'delete(Resource-X)'; return c }],
   ['wrong effective_authority', (v) => { const c = correct(v); c.effective_authority = 'write(Resource-R)'; return c }],

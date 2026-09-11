@@ -20,18 +20,26 @@
  *   node reference/verify-submission.mjs --submission <path> --answers <path>
  */
 
-import { readFileSync, readdirSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const VECTORS_DIR = resolve(__dirname, '..', 'vectors', 'stateless')
+const VECTORS_ROOT = resolve(__dirname, '..', 'vectors')
+const VECTOR_PROFILES = ['stateless', 'snapshot']
 
 function loadVectors() {
-  return readdirSync(VECTORS_DIR)
-    .filter((f) => f.endsWith('.json'))
-    .sort()
-    .map((f) => JSON.parse(readFileSync(resolve(VECTORS_DIR, f), 'utf8')))
+  const vectors = []
+  for (const profile of VECTOR_PROFILES) {
+    const dir = resolve(VECTORS_ROOT, profile)
+    if (!existsSync(dir)) continue
+    for (const f of readdirSync(dir)) {
+      if (f.endsWith('.json')) {
+        vectors.push(JSON.parse(readFileSync(resolve(dir, f), 'utf8')))
+      }
+    }
+  }
+  return vectors.sort((a, b) => String(a.id).localeCompare(String(b.id)))
 }
 
 function main() {

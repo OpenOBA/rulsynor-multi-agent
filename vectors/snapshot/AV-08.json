@@ -1,0 +1,39 @@
+{
+  "id": "AV-08",
+  "family": "delegated-authority",
+  "profile": "snapshot",
+  "invariant": "INV-02",
+  "description": "Temporal delegation replay: a prior delegation record is replayed such that its temporal relationship to the current task acceptance is invalid — TASK_ACCEPT.timestamp < DELEGATE.timestamp (acceptance precedes the delegation that authorizes it).",
+  "rule": {
+    "id": "INV-02_temporal_replay",
+    "name": "INV-02_temporal_replay",
+    "description": "A delegation establishing authority must precede acceptance or exercise of that authority (no replay)",
+    "category": "security",
+    "conditions": [
+      { "expr": { "lt": [{ "epoch_ms": { "field": "accept_t" } }, { "epoch_ms": { "field": "delegate_t" } }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "temporally inconsistent delegation: task acceptance precedes the delegation that authorizes it (INV-02)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": {
+    "delegate_t": "2026-01-01T01:00:00Z",
+    "accept_t": "2026-01-01T00:30:00Z"
+  },
+  "legal": {
+    "delegate_t": "2026-01-01T01:00:00Z",
+    "accept_t": "2026-01-01T02:00:00Z"
+  },
+  "attribution": {
+    "originating_task": "T-delegate-0908",
+    "authority_provenance": "P→A→B",
+    "violation_hop": "A→B",
+    "requested_action": "accept(T, replayed-delegation)",
+    "effective_authority": "DELEGATE < TASK_ACCEPT required",
+    "reason": "TEMPORAL_DELEGATION_REPLAY"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "id": "AV-03",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-01",
+  "description": "Privileged delegate laundering: Agent A is not authorized to perform action write; Agent B independently possesses write standing. A delegates to B to cause B to perform write, laundering B's broader privilege into the task.",
+  "rule": {
+    "id": "INV-01_privileged_delegate_laundering",
+    "name": "INV-01_privileged_delegate_laundering",
+    "description": "A delegatee's independent standing privileges must not become available to the delegated task",
+    "category": "security",
+    "conditions": [
+      { "expr": { "ne": [{ "field": "request.action" }, { "field": "effective.action" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "privileged delegate laundering: delegatee exercised standing privilege outside the delegated authority (INV-01)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": {
+    "effective.action": "read",
+    "request.action": "write"
+  },
+  "legal": {
+    "effective.action": "read",
+    "request.action": "read"
+  },
+  "attribution": {
+    "originating_task": "T-report-0903",
+    "authority_provenance": "P→A→B",
+    "violation_hop": "A→B",
+    "requested_action": "write(Resource-R)",
+    "effective_authority": "read(Resource-R)",
+    "reason": "PRIVILEGED_DELEGATE_LAUNDERING"
+  }
+}
