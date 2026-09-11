@@ -76,6 +76,10 @@ It records your verdict per vector id — the conformance fields:
 5. **Open a Pull Request** — CI cross-verifies against the answer oracle (gitignored, never
    exposed); on merge, `IMPLEMENTATIONS.md` is auto-updated.
 
+## Archive
+
+`submissions/archive/` holds submissions for a previous vector set (the 3-pilot set, AV-01/04/06). When the vector set expands, earlier submissions that no longer cover the full set are moved here for the historical record; they are not cross-verified against the current vectors.
+
 ## Principles
 
 - **Measurements, not endorsements**: the registry records "who passed how many on what date".
