@@ -193,7 +193,7 @@ above A2A transport, in the Rulsynor organization layer.
 | INV-02 | AV-02, AV-08, AV-12 | DENY / RE-AUTHORIZE | Authority lineage, event ordering, authorization state, identity binding |
 | INV-03 | AV-04 | DENY | Inherited constraints + attempted downstream constraints |
 | INV-04 | AV-05, AV-10 | DENY | Revoked ancestor, derived authority lineage, boundary decision, freshness epoch |
-| INV-05 | AV-06 | DENY | Task authority, downstream capability, requested effect, boundary decision |
+| INV-05 | AV-06 (primary; supporting INV-01/02/03) | DENY | Task authority, downstream capability, requested effect, boundary decision |
 
 ---
 
@@ -404,6 +404,8 @@ propagation — is what *prepares the context* for the later multi-hop vectors (
 aggregation, AV-05/AV-10 revocation): it computes the effective `authorized.*` values that the
 expression layer then compares. The expression layer remains the sole decision authority; the
 organization layer derives its inputs, never the other way around.
+
+**Snapshot vs stateful boundary.** The eight vectors are snapshot-evaluated: for AV-05 (revocation) and AV-08 (temporal replay), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05).
 
 ---
 

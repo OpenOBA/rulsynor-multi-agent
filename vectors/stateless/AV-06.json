@@ -3,7 +3,7 @@
   "family": "delegated-authority",
   "profile": "stateless",
   "invariant": "INV-05",
-  "description": "Capability-boundary laundering: B is authorized read(R) only; B invokes Skill S, S invokes Tool T, T (standing capability write) attempts write against R.",
+  "description": "Capability-boundary laundering: B is authorized read(R) only; B invokes Skill S, S invokes Tool T, T (standing capability write) attempts write against R. NOTE: Annam's matrix marks AV-06 with primary INV-05 and supporting INV-01/02/03 (non-amplification, provenance, constraint inheritance) — the supporting invariants are not encoded in the single-valued invariant field (INV-05 primary).",
   "rule": {
     "id": "INV-05_capability_boundary_non_amplification",
     "name": "INV-05_capability_boundary_non_amplification",
