@@ -1,0 +1,32 @@
+{
+  "runner": "ravindra-annam-python-independent",
+  "method": "Python 3, spec-only, self-built expression-tree evaluator (gt/ne; no OpenOBA SDK)",
+  "date": "2026-09-10",
+  "artifact": "Ravindra Annam Python Independent Runner",
+  "results": {
+    "AV-01": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "A→B",
+      "requested_action": "refund(level=L3)",
+      "effective_authority": "refund(level=L2)",
+      "reason": "AUTHORITY_NON_AMPLIFICATION"
+    },
+    "AV-04": {
+      "decision": "DENY",
+      "matched_invariant": "INV-03",
+      "first_invalid_boundary": "B→C",
+      "requested_action": "refund(amount=5000)",
+      "effective_authority": "refund(amount=500)",
+      "reason": "CONSTRAINT_NARROW_ONLY_VIOLATION"
+    },
+    "AV-06": {
+      "decision": "DENY",
+      "matched_invariant": "INV-05",
+      "first_invalid_boundary": "T→R",
+      "requested_action": "write(Resource-R)",
+      "effective_authority": "read(Resource-R)",
+      "reason": "CAPABILITY_BOUNDARY_AUTHORITY_AMPLIFICATION"
+    }
+  }
+}
