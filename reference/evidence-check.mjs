@@ -1,4 +1,6 @@
 import { Evaluator } from '../../erdl-landing/dist/index.js'
+import { fromSExpr } from '../../erdl-landing/dist/expr-tree/s-expression.js'
+import { hashTreeWithPrefix } from '../../erdl-landing/dist/expr-tree/canonical.js'
 
 const ev = new Evaluator()
 const rule = {
@@ -22,6 +24,9 @@ check('正常匹配 decision=DENY', r1.decision, 'DENY')
 check('canonicalTrees 存在且有 hash', Array.isArray(r1.canonicalTrees) && r1.canonicalTrees.length > 0, true)
 check('hash 以 sha256: 开头', r1.canonicalTrees?.[0]?.hash?.startsWith('sha256:') ?? false, true)
 check('hash 长度 = 71 (sha256: + 64 hex)', r1.canonicalTrees?.[0]?.hash?.length ?? 0, 71)
+check('canonicalTrees 含 tree 快照（可独立重算）', r1.canonicalTrees?.[0]?.tree !== undefined, true)
+const recomputed = hashTreeWithPrefix(fromSExpr(r1.canonicalTrees?.[0]?.tree))
+check('tree 快照重算哈希与 hash 一致', recomputed, r1.canonicalTrees?.[0]?.hash)
 check('asOf 是 ISO 时间戳', r1.asOf !== undefined && r1.asOf.startsWith('20') && r1.asOf.includes('-'), true)
 check('正常匹配 errored 为 undefined', r1.errored, undefined)
 
