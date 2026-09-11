@@ -1,7 +1,14 @@
 import { parseErdlDocument } from '../../erdl-landing/dist/index.js'
-import { renderGloss, lintGloss } from '../../erdl-landing/dist/expr-tree/gloss.js'
+import { lintGloss } from '../../erdl-landing/dist/expr-tree/gloss.js'
 import { ruleWhenToExpr } from '../../erdl-landing/dist/expr-tree/rule-to-expr.js'
-import { fromSExpr } from '../../erdl-landing/dist/expr-tree/s-expression.js'
+
+let n = 0, fails = 0
+function check(label, actual, expected) {
+  n++
+  const ok = actual === expected
+  if (!ok) fails++
+  console.log(`${ok ? 'OK ' : 'XX '} ${label}: actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`)
+}
 
 const doc = parseErdlDocument(`
 protocol: "erdl/v2"
@@ -20,18 +27,18 @@ rules:
 `)
 
 const rule = doc.rules[0]
-console.log('规则 gloss:', JSON.stringify(rule.gloss))
+// B5-e: every rule MUST carry a gloss (G2)
+check('规则 gloss 存在且非空', rule.gloss !== undefined && rule.gloss.length > 0, true)
 
-// lintGloss 校验
-const tree = ruleWhenToExpr(rule) ?? fromSExpr(rule.conditions[0].expr)
-const ok = lintGloss(tree, rule.action.decision, rule.gloss, 'en')
-console.log('lintGloss 校验通过:', ok)
+const tree = ruleWhenToExpr(rule)
+check('规则可编译为表达式树', tree !== null, true)
 
-// 篡改后应失败
+// B5-e: lintGloss(rule) MUST verify gloss == render(tree) (G5)
+check('lintGloss 正确 gloss 通过', lintGloss(tree, rule.action.decision, rule.gloss, 'en'), true)
 const tampered = rule.gloss + ' (tampered)'
-console.log('篡改后 lintGloss:', lintGloss(tree, rule.action.decision, tampered, 'en'), '(期望 false)')
+check('lintGloss 篡改后失败', lintGloss(tree, rule.action.decision, tampered, 'en'), false)
 
-// 决策表 gloss 也应生成
+// B3: decision table rows must also get a gloss
 const dt = parseErdlDocument(`
 protocol: "erdl/v2"
 version: "2.1.0"
@@ -48,4 +55,8 @@ rules:
         - when: []
           then: "ALLOW"
 `)
-dt.rules.forEach((r) => console.log('决策表行 gloss:', r.name, '->', JSON.stringify(r.gloss)))
+check('决策表展开 2 行', dt.rules.length, 2)
+check('决策表每行都有 gloss', dt.rules.every((r) => r.gloss !== undefined && r.gloss.length > 0), true)
+
+console.log(`\n${n - fails}/${n} gloss lint 断言通过`)
+process.exit(fails === 0 ? 0 : 1)
