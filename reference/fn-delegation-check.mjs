@@ -67,5 +67,14 @@ check('argsHash 长度 64 (sha256 hex)', log.argsHash?.length ?? 0, 64)
 check('resultHash 长度 64 (sha256 hex)', log.resultHash?.length ?? 0, 64)
 check('invokeSync result = 42', log.result, 42)
 
+// 7. async invoke 也记录 argsHash + resultHash（补齐 async 路径遗漏）
+const reg3 = new ERDLFnRegistry()
+reg3.register({ signature: { name: 'g', signature: 'g(x) -> number', params: ['x'], returns: 'number' }, impl: (x) => x * 3, deterministic: true })
+await reg3.invoke('g', 7)
+const log3 = reg3.getCallLog()[0]
+check('async invoke argsHash 长度 64', log3.argsHash?.length ?? 0, 64)
+check('async invoke resultHash 长度 64', log3.resultHash?.length ?? 0, 64)
+check('async invoke result = 21', log3.result, 21)
+
 console.log(`\n${n - fails}/${n} fn 委派断言通过`)
 process.exit(fails === 0 ? 0 : 1)
