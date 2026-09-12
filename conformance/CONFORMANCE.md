@@ -10,8 +10,8 @@
 
 | Check | Result |
 |-------|--------|
-| Attack vectors (negative → DENY + correct invariant) | 8/8 |
-| Legal baselines (positive → ALLOW) | 8/8 |
+| Attack vectors (negative → DENY + correct invariant) | 13/13 |
+| Legal baselines (positive → ALLOW) | 13/13 |
 | deny-all implementation conforms | 0 vectors (blocked ✓) |
 | allow-all implementation conforms | 0 vectors (blocked ✓) |
 | **Result** | **PASS** |
@@ -27,7 +27,12 @@
 | AV-05 | INV-04 | DENY | INV-04 | P→A | exercise(derived-authority) | revoked (P→A revoked) | ✅ | ✅ |
 | AV-06 | INV-05 | DENY | INV-05 | T→R | write(Resource-R) | read(Resource-R) | ✅ | ✅ |
 | AV-07 | INV-01 | DENY | INV-01 | D→E | delegate(D→E) | max depth 3 (4 edges attempted) | ✅ | ✅ |
-| AV-08 | INV-02 | DENY | INV-02 | A→B | accept(T, replayed-delegation) | DELEGATE < TASK_ACCEPT required | ✅ | ✅ |
+| AV-08 | INV-02 | DENY | INV-02 | A→B | accept(T, replayed-delegation) | chain_seq must be unconsumed | ✅ | ✅ |
+| AV-09 | INV-01 | DENY | INV-01 | A→B | consume(delegation-2, amount=500) | amount<=500 shared cumulative budget | ✅ | ✅ |
+| AV-10 | INV-04 | DENY | INV-04 | P→A | exercise(protected-action) | AUTHORITY_STATE_UNVERIFIED (stale-negative) | ✅ | ✅ |
+| AV-11 | INV-01 | DENY | INV-01 | A→B | delegate(T, B) | non-delegatable basis | ✅ | ✅ |
+| AV-12 | INV-02 | DENY | INV-02 | B | execute(T, as-B) | bound to key-B only | ✅ | ✅ |
+| AV-13 | INV-04 | DENY | INV-04 | P→A | reverse(completed-action) | completed before revocation (no reversal) | ✅ | ✅ |
 
 ## Conformance Contract
 
