@@ -8,7 +8,7 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 ## Current vector set
 
 - **Standard**: ERDL delegated-authority invariants (INV-01..INV-05), anchored on the ERDL expression engine (DESIGN.md §8a)
-- **Vector files**: `vectors/stateless/*.json` + `vectors/snapshot/*.json` (13 vectors: AV-01..AV-13, aligned to the source conformance matrix)
+- **Vector files**: `vectors/stateless/*.json` + `vectors/snapshot/*.json` (8 vectors: AV-01..AV-08, aligned to the source conformance matrix)
 - **Verifier**: `reference/runner.mjs` (reference implementation, evaluates via erdl-landing) + `reference/verify-submission.mjs`
 - **Answer file**: `answers.json` (`.gitignore`; never exposed to submitters)
 
@@ -17,15 +17,15 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 <!-- registry:auto-begin -->
 | Implementor | Method | Result | Date | Artifact |
 |------------|--------|:-------:|------|---------|
-| **OpenOBA (reference)** | Node.js, @openoba/erdl engine | 13/13 | 2026-09-12 | [runner.mjs](reference/runner.mjs) |
+| **OpenOBA (reference)** | Node.js, @openoba/erdl engine | 8/8 | 2026-09-11 | [runner.mjs](reference/runner.mjs) |
 | **RavindraAnnam** | Python 3, spec-only (std lib only) | 3/8 | 2026-09-10 | [output.json](submissions/ravindra-annam-python-independent-output.json) |
 <!-- registry:auto-end -->
 
-> RavindraAnnam's 3/8 reflects the three pilot vectors (AV-01/04/06) cross-verified against the 3-pilot set; the set has since expanded to 13 (AV-01..AV-13).
+> RavindraAnnam's 3/8 reflects the three pilot vectors (AV-01/04/06) cross-verified against the 3-pilot set; the set has since expanded to 8 (AV-01..AV-08).
 
 ## Snapshot vs stateful boundary
 
-For AV-05, AV-08, AV-10 and AV-13, the current suite proves that the engine reaches the correct decision **given materialized state** — it should not be described as proving cross-request revocation propagation or event-history retention.
+For AV-05 and AV-08, the current suite proves that the engine reaches the correct decision **given materialized state** — it should not be described as proving cross-request revocation propagation or event-history retention.
 
 The progression is, and remains:
 
