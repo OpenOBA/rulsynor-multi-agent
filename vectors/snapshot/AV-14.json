@@ -1,0 +1,38 @@
+{
+  "id": "AV-14",
+  "family": "delegated-authority",
+  "profile": "snapshot",
+  "invariant": "INV-04",
+  "description": "Unavailable authority state (Q6): an enforcement boundary must fail closed when the revocation/authority state it requires cannot be established. The boundary's view carries no revocation epoch at all — the state is simply absent.",
+  "rule": {
+    "id": "INV-04_unavailable_state",
+    "name": "INV-04_unavailable_state",
+    "description": "A boundary MUST NOT authorize when the authority/revocation state it requires is absent (cannot be established)",
+    "category": "security",
+    "conditions": [
+      { "expr": { "not_exists": { "field": "revocation.epoch" } } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "authority/revocation state unavailable (INV-04 fail-closed)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": {
+    "boundary.epoch": 100
+  },
+  "legal": {
+    "boundary.epoch": 102,
+    "revocation.epoch": 101
+  },
+  "attribution": {
+    "originating_task": "T-exec-0935",
+    "authority_provenance": "P→A→B→C",
+    "violation_hop": "P→A",
+    "requested_action": "exercise(protected-action)",
+    "effective_authority": "AUTHORITY_STATE_UNAVAILABLE (state absent)",
+    "reason": "AUTHORITY_STATE_UNAVAILABLE"
+  }
+}
