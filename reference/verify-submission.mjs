@@ -22,13 +22,13 @@
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const VECTORS_ROOT = resolve(__dirname, '..', 'vectors')
 const VECTOR_PROFILES = ['stateless', 'snapshot']
 
-function loadVectors() {
+export function loadVectors() {
   const vectors = []
   for (const profile of VECTOR_PROFILES) {
     const dir = resolve(VECTORS_ROOT, profile)
@@ -42,22 +42,13 @@ function loadVectors() {
   return vectors.sort((a, b) => String(a.id).localeCompare(String(b.id)))
 }
 
-function main() {
-  const args = process.argv.slice(2)
-  const get = (flag) => {
-    const i = args.indexOf(flag)
-    return i === -1 ? null : args[i + 1]
-  }
-  const submissionPath = get('--submission')
-  const answersPath = get('--answers')
-  if (!submissionPath || !answersPath) {
-    console.error('Usage: node reference/verify-submission.mjs --submission <path> --answers <path>')
-    process.exit(2)
-  }
-
-  const submission = JSON.parse(readFileSync(submissionPath, 'utf8'))
-  const answers = JSON.parse(readFileSync(answersPath, 'utf8'))
-  const vectors = loadVectors()
+/**
+ * Cross-verify one submission against the vectors + answer oracle.
+ * Returns { pass, total, mismatches } — mismatches non-empty ⇒ the submission does NOT conform.
+ * Reusable by update-registry.mjs (auto-record) so the registry and the CLI share one
+ * cross-verification definition.
+ */
+export function crossVerify(submission, vectors, answers) {
   const byId = Object.fromEntries(vectors.map((v) => [v.id, v]))
 
   const results = submission.results || {}
@@ -108,6 +99,28 @@ function main() {
     if (!byId[id]) mismatches.push(`${id}: unknown vector id in submission`)
   }
 
+  return { pass, total, mismatches }
+}
+
+function main() {
+  const args = process.argv.slice(2)
+  const get = (flag) => {
+    const i = args.indexOf(flag)
+    return i === -1 ? null : args[i + 1]
+  }
+  const submissionPath = get('--submission')
+  const answersPath = get('--answers')
+  if (!submissionPath || !answersPath) {
+    console.error('Usage: node reference/verify-submission.mjs --submission <path> --answers <path>')
+    process.exit(2)
+  }
+
+  const submission = JSON.parse(readFileSync(submissionPath, 'utf8'))
+  const answers = JSON.parse(readFileSync(answersPath, 'utf8'))
+  const vectors = loadVectors()
+
+  const { pass, total, mismatches } = crossVerify(submission, vectors, answers)
+
   console.log(`runner: ${submission.runner || '(unnamed)'}`)
   console.log(`method: ${submission.method || '(unspecified)'}`)
   if (mismatches.length === 0) {
@@ -119,4 +132,6 @@ function main() {
   process.exit(1)
 }
 
-main()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+}
