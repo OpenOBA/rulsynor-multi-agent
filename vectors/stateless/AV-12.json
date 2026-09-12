@@ -1,0 +1,33 @@
+{
+  "id": "AV-12",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-02",
+  "description": "Agent impersonation: origin authorizes a task to agent B bound to B's cryptographic identity; a rogue agent C claims B's agent-ID string.",
+  "rule": {
+    "id": "INV-02_identity_binding",
+    "name": "INV-02_identity_binding",
+    "description": "The authorization basis binds the delegatee's cryptographic identity, not an agent-ID string",
+    "category": "security",
+    "conditions": [
+      { "expr": { "ne": [{ "field": "executor.identity" }, { "field": "bound.identity" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "executing agent's identity does not match the bound cryptographic identity (INV-02 identity binding)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "executor.identity": "key-C", "bound.identity": "key-B" },
+  "legal": { "executor.identity": "key-B", "bound.identity": "key-B" },
+  "attribution": {
+    "originating_task": "T-exec-0951",
+    "authority_provenance": "P→B",
+    "violation_hop": "B",
+    "requested_action": "execute(T, as-B)",
+    "effective_authority": "bound to key-B only",
+    "reason": "IDENTITY_BINDING_VIOLATION"
+  }
+}

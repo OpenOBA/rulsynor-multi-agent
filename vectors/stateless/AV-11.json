@@ -1,0 +1,36 @@
+{
+  "id": "AV-11",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-01",
+  "description": "Rogue-agent creation: origin authorizes A with a non-delegatable basis; A, compromised, attempts to DELEGATE the task to a new agent B.",
+  "rule": {
+    "id": "INV-01_delegation_authority",
+    "name": "INV-01_delegation_authority",
+    "description": "A DELEGATE action is a privilege, not a default: an agent may issue a DELEGATE only if its own basis is delegatable",
+    "category": "security",
+    "conditions": [
+      { "expr": { "and": [
+        { "eq": [{ "field": "action" }, "delegate"] },
+        { "eq": [{ "field": "basis.delegatable" }, false] }
+      ] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "delegation issued from a non-delegatable authorization basis (INV-01 delegation-depth control)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "action": "delegate", "basis.delegatable": false },
+  "legal": { "action": "delegate", "basis.delegatable": true },
+  "attribution": {
+    "originating_task": "T-delegate-0941",
+    "authority_provenance": "P→A",
+    "violation_hop": "A→B",
+    "requested_action": "delegate(T, B)",
+    "effective_authority": "non-delegatable basis",
+    "reason": "DELEGATION_AUTHORITY_VIOLATION"
+  }
+}

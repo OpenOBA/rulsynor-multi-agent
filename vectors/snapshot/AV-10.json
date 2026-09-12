@@ -1,0 +1,33 @@
+{
+  "id": "AV-10",
+  "family": "delegated-authority",
+  "profile": "snapshot",
+  "invariant": "INV-04",
+  "description": "Stale-negative revocation (freshness): P→A→B→C; a boundary caches revocation state at epoch N; P revokes P→A at epoch N+1; the boundary, still at N, receives C's protected action and sees no tombstone.",
+  "rule": {
+    "id": "INV-04_revocation_freshness",
+    "name": "INV-04_revocation_freshness",
+    "description": "An enforcement boundary must not treat the absence of a visible revocation as proof of validity unless its observed epoch is fresh enough",
+    "category": "security",
+    "conditions": [
+      { "expr": { "lt": [{ "field": "boundary.epoch" }, { "field": "revocation.epoch" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "revocation state is stale relative to the boundary epoch (INV-04 freshness)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "boundary.epoch": 100, "revocation.epoch": 101 },
+  "legal": { "boundary.epoch": 102, "revocation.epoch": 101 },
+  "attribution": {
+    "originating_task": "T-exec-0931",
+    "authority_provenance": "P→A→B→C",
+    "violation_hop": "P→A",
+    "requested_action": "exercise(protected-action)",
+    "effective_authority": "AUTHORITY_STATE_UNVERIFIED (stale-negative)",
+    "reason": "REVOCATION_FRESHNESS_STALE"
+  }
+}

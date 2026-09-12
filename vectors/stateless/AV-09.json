@@ -1,0 +1,33 @@
+{
+  "id": "AV-09",
+  "family": "delegated-authority",
+  "profile": "stateless",
+  "invariant": "INV-01",
+  "description": "Aggregation amplification: origin authorizes amount<=500 as a shared cumulative budget; A delegates two narrow tasks to B, each amount<=500; B consumes both for a total of 1000 under the same origin budget.",
+  "rule": {
+    "id": "INV-01_aggregation_non_amplification",
+    "name": "INV-01_aggregation_non_amplification",
+    "description": "Multiple narrow delegations must not sum past the origin's shared cumulative budget",
+    "category": "security",
+    "conditions": [
+      { "expr": { "gt": [{ "field": "aggregate.amount" }, { "field": "origin.budget" }] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "aggregated amount exceeds the origin's shared cumulative budget (INV-01)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "aggregate.amount": 1000, "origin.budget": 500 },
+  "legal": { "aggregate.amount": 400, "origin.budget": 500 },
+  "attribution": {
+    "originating_task": "T-refund-0921",
+    "authority_provenance": "P→A→B",
+    "violation_hop": "A→B",
+    "requested_action": "consume(delegation-2, amount=500)",
+    "effective_authority": "amount<=500 shared cumulative budget",
+    "reason": "AGGREGATION_NON_AMPLIFICATION"
+  }
+}

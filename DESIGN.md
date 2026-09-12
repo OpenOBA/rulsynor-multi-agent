@@ -59,7 +59,7 @@ The source note has eleven sections. This design document responds to all of the
 | 2 | Authority model (`SA`, `EA`, `C`, `D`) | §3 mapping |
 | 3 | Five invariants (INV-01…05) | §2 adoption |
 | 4 | Enforcement boundary | §3 + §6 |
-| 5 | Eight vectors (AV-01…08) | §2 adoption |
+| 5 | Thirteen vectors (AV-01…13) | §2 adoption |
 | 6 | Candidate conformance assertions (C-01…08) | §4 |
 | 7 | Relationship to A2A | §4 |
 | 8 | Eight co-review questions (Q1…Q8) | §7 |
@@ -71,7 +71,7 @@ The source note has eleven sections. This design document responds to all of the
 
 ## 2. Adoption — invariants and vectors (faithful)
 
-We adopt the five invariants and all eight vectors **as proposed by Ravindra Annam**, with
+We adopt the five invariants and the thirteen vectors (AV-01…13) — the eight originals **as proposed by Ravindra Annam**, plus five additions from our own co-review (AV-09…12 + the AV-13 completed-action dual), with
 his names and definitions (faithfully summarized; full text in the source).
 
 | Invariant | Definition (verbatim from source) |
@@ -117,7 +117,10 @@ and our own audit of the corrected model surfaced several more. We adopt all of 
 
 Vectors: **AV-01** direct amplification, **AV-02** transitive amplification, **AV-03** privileged
 laundering, **AV-04** downstream constraint removal, **AV-05** revoked ancestor, **AV-06**
-capability-boundary laundering, **AV-07** depth/loop violation, **AV-08** temporal replay.
+capability-boundary laundering, **AV-07** depth/loop violation, **AV-08** sequence replay
+(re-scoped from wall-clock replay, see §10 Finding 1), **AV-09** aggregation amplification,
+**AV-10** stale-negative revocation (freshness), **AV-11** rogue-agent creation, **AV-12** identity
+impersonation, **AV-13** completed-action no-reversal (AV-05's dual).
 
 Note on INV-01 scope: the source note places *Delegation Depth and Loop Safety* as a sub-property
 of INV-01 (validated alongside effective-authority containment). We adopt that placement — depth
@@ -192,7 +195,7 @@ above A2A transport, in the Rulsynor organization layer.
 | INV-01 | AV-01, AV-02, AV-03, AV-07, AV-09, AV-11 | DENY | Effective-authority ceiling, delegation chain, depth/loop state, cumulative budget |
 | INV-02 | AV-02, AV-08, AV-12 | DENY / RE-AUTHORIZE | Authority lineage, event ordering, authorization state, identity binding |
 | INV-03 | AV-04 | DENY | Inherited constraints + attempted downstream constraints |
-| INV-04 | AV-05, AV-10 | DENY | Revoked ancestor, derived authority lineage, boundary decision, freshness epoch |
+| INV-04 | AV-05, AV-10, AV-13 | DENY | Revoked ancestor, derived authority lineage, boundary decision, freshness epoch, completed-action no-reversal |
 | INV-05 | AV-06 (primary; supporting INV-01/02/03) | DENY | Task authority, downstream capability, requested effect, boundary decision |
 
 ---
@@ -218,7 +221,7 @@ above A2A transport, in the Rulsynor organization layer.
 | Delegation authority (who may DELEGATE) | ❌ not stated | **feasible** — add a `delegatable` flag on the basis; DELEGATE validates the issuer's delegatability |
 | Identity binding (impersonation) | ❌ not stated | **feasible** — bind the basis to a cryptographic identity (key), not an agent-ID string; enforcement verifies identity binding |
 | AV-07 depth/loop | ✅ `max_delegation_depth` + loop rejection exist | fold into INV-01 sub-property |
-| AV-08 temporal replay | ❌ not defined | **feasible** — new vector + attributable rejection |
+| AV-08 sequence replay | ✅ landed (re-scoped from wall-clock) | `chain_seq` continuity check |
 | Attributable rejection | ✅ Decision Object carries decision + reason; missing `matched_invariant`/`boundary` | **feasible** — two new DO fields |
 
 **Engineering feasibility summary.** Of the full gap set, the *only* new data structure is the
@@ -366,7 +369,7 @@ ERDL rule evaluation proves nothing about ERDL.
 
 **The enforcement boundary is a set of ERDL rules.** Each invariant is expressed as one (or a
 small group of) ERDL rule whose `when` condition is the constraint comparison and whose `then`
-action is the conforming decision. The eight vectors (AV-01..AV-08, aligned to the source conformance matrix) map directly onto the expression
+action is the conforming decision. The thirteen vectors (AV-01..AV-13, aligned to the source conformance matrix) map directly onto the expression
 layer's native condition operators (`gt` / `ne`, from `OP_COMPARE`) — no new evaluation machinery:
 
 | Vector | ERDL rule (`when → then`) | Context fields the rule reads |
@@ -378,7 +381,12 @@ layer's native condition operators (`gt` / `ne`, from `OP_COMPARE`) — no new e
 | AV-05 (INV-04) | `request_t > revocation_t → DENY` | `request_t`, `revocation_t` (snapshot) |
 | AV-06 (INV-05) | `request.action ≠ authorized.action → DENY` | `request.action`, `authorized.action` |
 | AV-07 (INV-01) | `chain_depth > max_depth → DENY` | `chain_depth`, `max_depth` |
-| AV-08 (INV-02) | `accept_t < delegate_t → DENY` | `accept_t`, `delegate_t` (snapshot) |
+| AV-08 (INV-02) | `replayed.seq ≤ chain.last_consumed_seq → DENY` | `replayed.seq`, `chain.last_consumed_seq` (snapshot) |
+| AV-09 (INV-01) | `aggregate.amount > origin.budget → DENY` | `aggregate.amount`, `origin.budget` |
+| AV-10 (INV-04) | `boundary.epoch < revocation.epoch → DENY` | `boundary.epoch`, `revocation.epoch` (snapshot) |
+| AV-11 (INV-01) | `action=delegate ∧ basis.delegatable=false → DENY` | `action`, `basis.delegatable` |
+| AV-12 (INV-02) | `executor.identity ≠ bound.identity → DENY` | `executor.identity`, `bound.identity` |
+| AV-13 (INV-04) | `completion_t ≥ revocation_t → DENY` | `completion_t`, `revocation_t` (snapshot) |
 
 Attribution is carried by the rule, not by a side channel: the matched rule's identity encodes
 `matched_invariant`; the injected-violation hop encodes `first_invalid_boundary`. `Evaluator`
@@ -405,7 +413,7 @@ aggregation, AV-05/AV-10 revocation): it computes the effective `authorized.*` v
 expression layer then compares. The expression layer remains the sole decision authority; the
 organization layer derives its inputs, never the other way around.
 
-**Snapshot vs stateful boundary.** The eight vectors are snapshot-evaluated: for AV-05 (revocation) and AV-08 (temporal replay), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05).
+**Snapshot vs stateful boundary.** The thirteen vectors are snapshot-evaluated: for AV-05/AV-13 (revocation), AV-08 (sequence replay) and AV-10 (freshness), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05).
 
 ---
 
@@ -448,10 +456,12 @@ unilaterally:
 2. **Conformance standard.** Two independent implementations will agree on the *decision*, but
    should they also agree on the *attribution* (`matched_invariant` / `boundary` / `reason`)? This
    determines what "passing" means for an independent runner.
-3. **Stateless vs. stateful split.** Of the 15 vectors, 13 are stateless (10 negative canaries +
-   3 positive baselines — delegation, constraints, identity; no revocation) and 2 are stateful
-   (AV-05 revoked-ancestor, AV-10 stale-negative — revocation + freshness). We propose landing the
-   13 stateless vectors first, then the 2 stateful ones; do you agree with that ordering?
+3. **Stateless vs. snapshot split.** Of the 13 vectors, 9 are stateless (pure current-state facts:
+   AV-01..04, AV-06..09, AV-11, AV-12) and 4 are snapshot-evaluated for revocation/temporal state
+   (AV-05 revocation, AV-08 sequence replay, AV-10 freshness, AV-13 completed-action no-reversal).
+   Every vector carries a `legal` baseline (→ ALLOW), so a deny-all implementation fails on the
+   legal side; the AV-13 dual additionally blocks over-revocation. We propose landing the 9
+   stateless vectors first, then the 4 snapshot ones; do you agree with that ordering?
 4. **Revocation freshness mechanism.** For the stateful vectors we lean on a monotonic authority
    epoch + fail-closed (DENY when freshness cannot be established). Is that an acceptable
    mechanism, or do you have a stronger preference?
@@ -460,7 +470,7 @@ unilaterally:
 
 ## 10. Our audit of the vector suite (co-review findings)
 
-The eight vectors are a strong adversarial set, but a rigorous review surfaces one scientific
+The thirteen vectors are a strong adversarial set, but a rigorous review surfaces one scientific
 issue, one completeness gap, one suite-level gap, and several precision notes. We raise these as
 peer-review findings, each with a proposed resolution — co-review goes both ways.
 
@@ -489,9 +499,10 @@ revocation (ALLOW), so the "no reversal" boundary is exercised rather than merel
 
 ### Finding 3 — the suite lacks positive vectors (suite-level gap)
 
-All eight vectors are negative (DENY). An implementation that indiscriminately denies everything
-passes all eight. §10's attributable-rejection requirement mitigates but does not close this: the
-suite structurally lacks positive baselines.
+All vectors carry a `legal` baseline (→ ALLOW) alongside their negative `attack` context, so a
+deny-all implementation fails on the legal side. The AV-13 dual (completed-action no-reversal)
+additionally blocks over-revocation. (The earlier "all eight are negative" framing predates the
+per-vector `legal` field, which already closes the deny-all gap.)
 
 **Proposed resolution.** Add positive vectors alongside the negative ones:
 - a valid delegation within authority → ALLOW;
