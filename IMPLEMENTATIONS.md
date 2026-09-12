@@ -27,11 +27,11 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 
 Submissions for a previous vector set — not cross-verified against the current 14 vectors:
 
-- **RavindraAnnam** — Python 3, spec-only (std lib only) — 3/8 (2026-09-10): the three pilot vectors (AV-01/04/06) cross-verified against the 3-pilot set; the set has since expanded (8 → 13). Artifact: [output.json](submissions/archive/ravindra-annam-python-independent-output.json)
+- **RavindraAnnam** — Python 3, spec-only (std lib only) — 3/8 (2026-09-10): the three pilot vectors (AV-01/04/06) cross-verified against the 3-pilot set; the set has since expanded (8 → 14). Artifact: [output.json](submissions/archive/ravindra-annam-python-independent-output.json)
 
 ## Snapshot vs stateful boundary
 
-For AV-05, AV-08, AV-10 and AV-13, the current suite proves that the engine reaches the correct decision **given materialized state** — it should not be described as proving cross-request revocation propagation or event-history retention.
+For AV-05, AV-08, AV-10, AV-13 and AV-14, the current suite proves that the engine reaches the correct decision **given materialized state** — it should not be described as proving cross-request revocation propagation or event-history retention.
 
 The progression is, and remains:
 

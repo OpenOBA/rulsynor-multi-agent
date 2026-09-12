@@ -211,7 +211,7 @@ above A2A transport, in the Rulsynor organization layer.
 | INV-01 | AV-01, AV-02, AV-03, AV-07, AV-09, AV-11 | DENY | Effective-authority ceiling, delegation chain, depth/loop state, cumulative budget |
 | INV-02 | AV-02, AV-08, AV-12 | DENY / RE-AUTHORIZE | Authority lineage, event ordering, authorization state, identity binding |
 | INV-03 | AV-04 | DENY | Inherited constraints + attempted downstream constraints |
-| INV-04 | AV-05, AV-10, AV-13 | DENY | Revoked ancestor, derived authority lineage, boundary decision, freshness epoch, completed-action no-reversal |
+| INV-04 | AV-05, AV-10, AV-13, AV-14 | DENY | Revoked ancestor, derived authority lineage, boundary decision, freshness epoch, completed-action no-reversal, unavailable state |
 | INV-05 | AV-06 (primary; supporting INV-01/02/03) | DENY | Task authority, downstream capability, requested effect, boundary decision |
 
 ---
