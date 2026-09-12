@@ -403,7 +403,7 @@ contract* — as norviq-go and concordia-python independently implement the Deci
 folding from scratch without evaluating ERDL rules is a parallel system, not an ERDL-conforming
 one.
 
-**Where the organization layer enters — and why the pilot does not need it yet.** The eight
+**Where the organization layer enters — and why the pilot does not need it yet.** The thirteen
 vectors are snapshot-evaluated: the "authorized" side of each comparison is statically given in
 the scenario (AV-01's `authorized.level = L2` is fixed by the origin grant),
 so the expression layer alone produces the verdict; no authority state machine is required. The

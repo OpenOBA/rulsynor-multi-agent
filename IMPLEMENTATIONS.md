@@ -9,7 +9,7 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 
 - **Standard**: ERDL delegated-authority invariants (INV-01..INV-05), anchored on the ERDL expression engine (DESIGN.md §8a)
 - **Vector files**: `vectors/stateless/*.json` + `vectors/snapshot/*.json` (13 vectors: AV-01..AV-13, aligned to the source conformance matrix)
-- **Verifier**: `reference/runner.mjs` (reference implementation, evaluates via erdl-landing) + `reference/verify-submission.mjs`
+- **Verifier**: `reference/runner.mjs` (reference implementation, evaluates via erdl-landing) + `reference/verify-submission.mjs` + `reference/update-registry.mjs` (auto-record, post-merge)
 - **Answer file**: `answers.json` (`.gitignore`; never exposed to submitters)
 
 ## Registry

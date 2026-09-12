@@ -74,7 +74,9 @@ It records your verdict per vector id — the conformance fields:
 3. **Evaluate** your engine over each vector's `attack` context.
 4. **Record** the result as `submissions/<your-runner-name>-output.json`.
 5. **Open a Pull Request** — CI cross-verifies against the answer oracle (gitignored, never
-   exposed); on merge, `IMPLEMENTATIONS.md` is auto-updated.
+   exposed). On merge to `main`, the post-merge workflow (`.github/workflows/record-runners.yml`)
+   runs `reference/update-registry.mjs` to regenerate `IMPLEMENTATIONS.md` and auto-commits it.
+   Only submissions that PASS cross-verification are recorded; a failing one is never recorded.
 
 ## Archive
 
