@@ -1,2 +1,6 @@
 # Answer oracle — never committed (third-party runners must not read it)
 answers.json
+
+# 预研文档 — 定稿前不跟踪
+docs/erdl-capability-exploration.md
+docs/unified-kernel-principle.md
