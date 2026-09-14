@@ -226,7 +226,7 @@ The three forms share the same semantics, differing only in expressiveness and t
 
 Simple is the preserved, existing set of semantic units — **30 operators = 28 conditions + 2 modifiers**, unchanged. It corresponds to system safety rules (tier 0–2).
 
-**Set definition**:
+#### 5.2.1 Set definition
 
 | Family | Count | Operators |
 |----|------|--------|
@@ -240,7 +240,7 @@ Simple is the preserved, existing set of semantic units — **30 operators = 28 
 | Count | 4 | count_gt · count_gte · count_lt · count_lte |
 | Modifier | 2 | within (time window) · rate (rate limit) |
 
-**Semantic conventions** (apply to all operators):
+#### 5.2.2 Semantic conventions
 
 - **Strict type matching**: no implicit type conversion; `"100" gt 50` is always false;
 - **Same-type ordered comparison**: numbers use numeric order, strings use lexicographic order (Unicode code point order; `"2" gt "10"` is true); cross-type returns false;
@@ -251,6 +251,8 @@ Simple is the preserved, existing set of semantic units — **30 operators = 28 
 - **List limit**: in/not_in operands ≤256 items;
 - **Determinism guarantee**: executed by a closed evaluation kernel, with no code injection path;
 - **Lenient aliases**: an implementation MAY accept two historical aliases and normalize them — `matches` → `match`, `neq` → `ne`. Aliases are not new operators (still the 30-operator set); the canonical form MUST use the canonical name, and aliases never enter the tree or the hash. Not implementing aliases is still conformant.
+
+#### 5.2.3 Authoritative compile mapping
 
 **Authoritative compile mapping**: all 30 operators have a definite compile target, with none dangling — **13 direct nodes** (eq/ne/gt/gte/lt/lte·in·contains/starts_with/ends_with/match·exists·between), **6 not-derived** (not_in/not_contains/not_starts_with/not_ends_with/not_exists/not_between), **9 length/count compositions** (length_* 5 + count_* 4), **2 time modifiers** (within/rate).
 
@@ -271,7 +273,11 @@ Simple is the preserved, existing set of semantic units — **30 operators = 28 
 | 29 | `within` | time modifier | time window (as_of injected by engine) |
 | 30 | `rate` | time modifier + aggregate | rate limit (temporal_state) |
 
+#### 5.2.4 exists guard (E11 compile-layer guarantee)
+
 **exists guard (compile-layer guarantee of E11 null propagation)**: the `not_*` operators (except `not_exists`) and the `length_*`/`count_*` compositions MUST compile to `exists(field) AND <derived expression>`, not a bare `not(positive operator)` or a bare `length/count(...) comparison`. Reason: a positive operator returns false for a missing field and `length(missing)` returns 0; a direct `not` flip or numeric comparison would break null propagation (fail-open). `not_exists` is the sole exception — its semantics are "perceive field missing", so it stays a bare `not(exists(...))`.
+
+#### 5.2.5 Stateful operators (within/rate)
 
 **Stateful operators (within/rate)**: `within` and `rate` are the only two stateful operators, whose evaluation depends on sliding-window counts across decisions. This state is not stored in the expression tree node but is maintained by a separate Guard state manager, entering the audit record as the `temporal_state` field — the expression tree itself remains a pure function (E1 holds), while the state source is auditable and recomputable.
 
@@ -285,6 +291,8 @@ Simple is the preserved, existing set of semantic units — **30 operators = 28 
 Supporting constraints (all MUST): ① post-counting (count only when the positive condition holds); ② count isolation key (`within` keys on `field+operator+value`, `rate` keys on `field+operator+value+rate`); ③ record timing in the "under-limit" branch.
 
 ### 5.3 Projection B: Expression (34-Node Tree)
+
+#### 5.3.1 Node set (34 nodes, 10 groups)
 
 Expression opens the kernel's full expressive power for complex business rules (tier ≥3). The semantic kernel is a **typed expression tree** of **34 nodes** (in **10 groups**), frozen at `[FREEZE-2]`:
 
@@ -303,6 +311,8 @@ Expression opens the kernel's full expressive power for complex business rules (
 
 > Node total: Value 3 + Logic 3 + Comparison 6 + Set 1 + String 4 + Existence/measure 3 + Quantifier 3 + Arithmetic 5 + Time 5 + Aggregate 1 = **34**. The 6 comparison operators, 4 string operators, 5 arithmetic operators, 3 quantifier kinds, and 5 aggregate functions are carried by parameterized node types in implementations (e.g. `compare{op}`, `string{op}`, `arith{op}`, `quantifier{kind}`, `aggregate{fn}`), so the "34 semantic nodes" map to fewer type literals in code — this is the relationship between semantic nodes and type projections, not a count contradiction.
 
+#### 5.3.2 Expression writing example
+
 **Expression writing example**:
 
 ```yaml
@@ -316,6 +326,8 @@ when:
 ```
 
 ### 5.4 Projection C: Decision Table (Matrix Form)
+
+#### 5.4.1 Structure and example
 
 The decision table faces business and finance staff, expressing multi-condition combinations in row-column structure, compiled to the same kernel:
 
@@ -336,6 +348,8 @@ rows:
     priority: 1
 ```
 
+#### 5.4.2 Compile rules (E7)
+
 Compile rules (E7): ① each row's `when` condition group compiles to logical AND in field-column order, and each condition unit compiles to a comparison node; ② row order is precedence (first match from top, consistent with `priority`; the two MUST NOT conflict); ③ the default row `when: []` compiles to literal `true`; ④ `then` MUST belong to the §6 decision type enumeration; ⑤ the compiled tree is identical to a hand-written Simple/Expression tree.
 
 ### 5.5 Projection D: gloss (Natural-Language Readable Projection)
@@ -346,6 +360,8 @@ gloss is natural-language text **deterministically generated** from the tree:
 gloss: "when (sale price minus cost) divided by sale price is less than 15%, human approval is required"   # engine-generated, lint-enforced
 ```
 
+#### 5.5.1 Five invariants (G1–G5)
+
 **Five invariants (all MUST)**:
 
 | # | Invariant |
@@ -355,6 +371,8 @@ gloss: "when (sale price minus cost) divided by sale price is less than 15%, hum
 | G3 | gloss forbids raw field paths and MUST use the Entity's display_name (bilingual; except `event.*` payload keys, see §5.5) |
 | G4 | gloss is a render product (does not enter the hash); displayed via live `render(tree)` |
 | G5 | Simple rules also generate gloss (rendered after compiling to a tree) — the reading layer is uniform |
+
+#### 5.5.2 Rendering templates (per node)
 
 **gloss rendering templates** (per node, **English as canonical**; `{A}`/`{B}`/`{C}` are recursive render results of sub-expressions):
 
@@ -398,6 +416,8 @@ gloss: "when (sale price minus cost) divided by sale price is less than 15%, hum
 | `aggregate(avg)` | `average of {A}` |
 | `aggregate(min)` | `minimum of {A}` |
 | `aggregate(max)` | `maximum of {A}` |
+
+#### 5.5.3 Special rendering rules
 
 > **state.* gloss rendering (G3)**: a field node whose path's first segment is `state` renders the `state.<name>` `display_name` (`en`, G3, §6a.1), falling back to the variable name; the `exists` boolean special case **does not apply** to state fields (state enum values are non-boolean; `exists(state.x)` is always "variable declared and always has a value", independent of the enum value).
 
@@ -492,8 +512,12 @@ transitions:
 
 > **transitions gloss (G2, MUST)**: like `rules[].when`, the `transitions[].when` guard expression tree is rendered to gloss by the engine (§5.5), with lint verifying `gloss == render(tree)` and forbidding hand-writing; `state.*`/`event.*` rendering is per §5.5. A transition rule's gloss serves **audit readability only** (not in the hash, same as G4) and does not change evaluation semantics.
 
-**Transition semantics**:
+#### 6a.2.1 Transition semantics
+
 - **Event-handling atomicity (MUST)**: one `on` event is an **atomic transaction** — guards are evaluated one by one in `transitions` definition order (against the same pre-event snapshot); **evaluation stops at the first EvaluationError**, **no `set` is applied** (fail-closed), a `transition_error` audit event is recorded with its `error` taken from **that (first-failing) rule**, `errored=true` follows E3; type_mismatch-class warnings are handled only per §7.3(a) folding semantics (`errored=false`, not an error, and **do not stop** evaluation), but are **not recorded** — transition audit records have no warnings field (§6a.5); only after all guards pass is the full set of `set`s **committed at once**.
+
+#### 6a.2.2 Guard constraints
+
 - **Guards must not use stateful operators (MUST)**: `transitions[].when` MUST NOT use `within`/`rate` (load-time Error) — transition evaluation has no side-effect counting, consistent with the purity of "transitions do not count", avoiding the ambiguity of "does an event count once?".
 - **Guard node whitelist and error folding (MUST)**: the `transitions[].when` node set MUST be: Simple condition operators (the 28 condition operators of §5.2) + logic nodes (`and`/`or`/`not`) + time nodes (`epoch_ms`/`days_between`/`date_add`/`date_part`/`month_last_day`, for freshness time comparison, §6a.7) + `field`/`literal`; MUST NOT use: quantifiers (`all`/`any`/`none`), arithmetic (`add`/`sub`/`mul`/`div`/`round`), aggregates (`count`/`sum`/`avg`/`min`/`max`), `fn` (function delegation), `within`/`rate` (stateful operators). Of these, `fn` is already outside the transition-guard compilable range (Grade C fallback, not kernel); this prohibition is an **explicit defense**, preventing implementers from mistakenly introducing fn into guards. Resource cap per the E4 Grade A quota (arith depth ≤2 / tree depth ≤6 / nodes ≤64); transition guard evaluation errors do **not** apply the E12 per-tier fold — they always follow §6a.2's atomic fail-closed (EvaluationError → no `set` committed, §6a.5).
 - **Guards read pre-transition state**: `state.*` inside `when` reads the **state snapshot at event-arrival time** (i.e. before any of this event's transitions take effect), not the post-transition intermediate state — keeping the guard decision decoupled from the transition result and deterministic.
@@ -503,6 +527,9 @@ transitions:
   - **eager**: an event is processed **at arrival** (acquiring the document-instance lock, §6a.5), never deferred to the next `evaluate()`; `evaluate()` and event handling are mutually exclusive under the instance lock, so the `state.*` that `evaluate()` reads at start is necessarily the state **after all arrived events have committed**;
   - **ordering**: events within an instance are processed **FIFO** by arrival order; a duplicate `event_id` is processed only once, the duplicate is dropped and logged **off-chain** (not in the hash chain);
   - **events with no matching transition**: no state change, no audit record, no `state_version` increment (deterministic silent drop).
+
+#### 6a.2.3 Same-variable conflict check (decidable, sound)
+
 - **Same-variable conflict check (decidable, sound, MUST)**: multiple `enabled` transition rules that `set` the same state variable to **different values** under the same `(on, state variable)` constitute a determinism conflict. The loader MUST complete the following deterministic check, rejecting rather than silently accepting (rules `set` to the **same value** are idempotent, no conflict, exempt):
   - (0) if there is an unconditional rule (`when` omitted, or whose compiled product is a literal `true` node — implementations MUST NOT constant-fold beyond literals, to avoid cross-implementation divergence), it MUST be the only rule under that `(on, state variable)`; coexistence with any other rule → Error;
   - (1) otherwise prove pairwise mutual exclusion, with **only top-level conjuncts admissible as proof basis**: Simple form = the `logic: AND` `conditions` elements (a single condition is itself a top-level conjunct); expr form = the direct children of a top-level `and` node; conditions nested under `or`/`not` must never be used as proof basis (treated as unprovable); **precision rule (MUST)**: in Simple form with `logic: OR`, the whole condition group is treated as a **single top-level conjunct** (OR sub-conditions are not conjuncts) — since it is not an `eq` conjunct, the pairwise proof always falls into (3) as unprovable — unless the `set` values are identical (idempotent, exempt);
@@ -510,6 +537,9 @@ transitions:
   - (3) all other combinations are treated as unprovable → Error, requiring the author to split the event name or state variable;
   - (4) `enabled: false` rules are excluded from the check (also inert at runtime), but when they conflict with `enabled` rules lint SHOULD warn — otherwise enabling one is instantly a violation.
   - With the `transitions` count cap (§6a.4), the pairwise check is O(n²) bounded.
+
+#### 6a.2.4 Consistency and load-time validation
+
 - **Same-event `audit_as` consistency (decidable, MUST)**: all `enabled` transition rules under the same `on` event name MUST have the same `audit_as` (one event type = one audit posture); a mismatch is a load-time Error. Rationale: the successful-transition record is event-granular (§6a.5) — one event = one record, one `audit_as` slot; if the rules within one event disagree on `audit_as`, the record has no unique value and two implementations would answer differently, forking the audit chain. `enabled: false` rules are excluded from the check, but lint SHOULD warn when they disagree with `enabled` rules' `audit_as`.
 - A `set` value MUST belong to that variable's `values`; the transition direction (e.g. `authorized → revoked`) is determined by the `values` enum plus the `set` declaration — the engine executes only declared transitions and does not infer undeclared ones (fail-closed).
 - **Reference to an undeclared state variable (load-time validation full set, MUST)**: the following are all rejected at load (Error) — not null-propagated at evaluation time:
@@ -554,6 +584,8 @@ State outside the kernel ≠ state un-auditable. Audit closes over three rings p
 | ② Snapshot | the state value read at evaluation | `state_snapshot` enters the DO, in the hash preimage (§7.0.3) |
 | ③ Validity | only transition rules may change state, in a legal direction | engine validates the transition (fail-closed); undeclared transitions do not execute |
 
+#### 6a.5.1 `state_snapshot` structure
+
 **`state_snapshot` structure (provenance anchoring, MUST)**: `state_snapshot` is:
 
 ```
@@ -567,18 +599,26 @@ All three enter the DO hash preimage (§7.0.3). `state_version` and `transitions
 - **state_version counting unit (MUST)**: +1 per **successfully committed event transaction** — multiple `set`s within one event merge into a single increment; starts at 0 (i.e. genesis).
 - **transitions_head definition (MUST)**: the hash of the **most recent state-changing** audit record, initially the genesis hash; **no null branch**.
 - **transition_error record's chain position**: a `transition_error` record (on EvaluationError, §6a.2) is **linked into the chain** via `previous_hash` (keeping the chain complete), but does **not apply `set`, does not increment `state_version`, and does not move `transitions_head`**.
+
+#### 6a.5.2 Replay verification
+
 - **Replay verification (MUST)**: **Step 0 (origin check)** — the verifier MUST first recompute the target document's document-level hash per the §6a.5 `doc_tree_hash` definition and compare it with the `doc_tree_hash` in the on-chain genesis record; a mismatch means the chain does not belong to this document (reject, preventing cross-document chain transplant); **Step 1 (traversal)** — traverse the full chain from genesis along `previous_hash`, applying each success record's `set` and incrementing the counter; when the counter == `state_version`, for every state variable appearing in `state_snapshot.values`, the replayed **full state**'s value for that variable MUST equal `values[variable]`, and the current record hash MUST equal `transitions_head`; `error` records are traversed only — not applied, not counted.
 
-**`state_snapshot` serialization normalization (MUST, cross-implementation byte-identical)**:
+#### 6a.5.3 `state_snapshot` serialization normalization
+
 - `values` keys are ordered by **state-variable-name UTF-8 code-point ascending**, serialized as a JSON object;
 - string values are NFC-normalized (E10);
 - the DO hash-preimage field order MUST be fixed — the explicit ordering (including the relative order of `temporal_state`, `state_snapshot`, `canonical_trees`) is listed in §8.2a.
 
 Two implementations differing in any of key order / encoding / field order would compute different DO hashes, violating the "semantics = tree = hash" core promise — hence all three MUST be normalized.
 
+#### 6a.5.4 Event injection authentication
+
 **Event injection authentication (MUST)**: event injection MUST be engine-authenticated — the `actor` identity (§6a.7) enters the transition audit record; an unauthenticated event MUST be rejected (fail-closed). No arbitrary caller may inject `revoke`/`authorize` events.
 
 > **audit_as is not proof of human approval**: `audit_as` is only an audit label and carries no approval proof; an attacker can inject a forged event with `actor: human-1`. The only auditable form of human approval = the authenticated identity layer injecting the event as a human identity (`actor` enters the chain) — `audit_as: REQUEST_HUMAN` does not mean "this transition is itself a human approval".
+
+#### 6a.5.5 The three audit-record kinds
 
 **Successful transition record (first-class on-chain record, MUST)**: a transition that successfully commits `set` produces a successful transition record, with the format:
 
@@ -620,6 +660,8 @@ Here `initial`'s keys are ordered by state-variable-name UTF-8 code-point ascend
 
 > `initial` (genesis record) and `state_snapshot.values` (§7.0.3) are both "state-variable → value" mappings, but belong to two different preimages — the genesis record and the DO evaluation result — with their own fixed field names: `initial` expresses the initial state, `values` expresses the current state read at evaluation; implementers MUST serialize under each respective field name and MUST NOT conflate them.
 
+#### 6a.5.6 Rejected-event disposition and concurrency
+
 **Normative guidance (SHOULD)**: documents carrying authorization semantics SHOULD set `initial` to the most conservative sentinel (`unestablished`/`revoked`); an explicit bootstrap authorization must go through a transition event **with an `actor`**, leaving on-chain provenance, rather than a groundless `initial=authorized`.
 
 **Concurrency semantics (per document instance MUST serialize)**: event handling and `evaluate()` on the same document instance MUST be mutually exclusive; the `state_snapshot` that `evaluate()` sees is a consistent snapshot at evaluation start, no intermediate state allowed.
@@ -633,6 +675,8 @@ Here `initial`'s keys are ordered by state-variable-name UTF-8 code-point ascend
 ### 6a.7 Event and Transition Evaluation Context (Controlled Injection)
 
 Transition-rule guard evaluation is likewise brought into the "controlled injection" model (E1) and **does not read free fact**. The event object, guard context, and compilation discipline MUST be as follows:
+
+#### 6a.7.1 Event object structure
 
 **Event object**, structure MUST be:
 
@@ -653,12 +697,16 @@ event:
 | `actor` | string | Authenticated event-source identifier (provided by the identity layer, not self-asserted by payload); string MUST be NFC-normalized (E10, enters the transition-audit-record hash preimage) |
 | `payload` | object | Restricted payload: ≤8 keys, depth ≤2, scalar leaf values, single value ≤256B; keys MUST NOT contain `.` and MUST NOT be the four reserved field names (`event_id`/`on`/`actor`/`at`) |
 
+#### 6a.7.2 event.* resolution mechanism
+
 **event.* resolution mechanism (MUST)**:
 
 - `event.*` reuses the field node's first-segment interception just like `state.*` (in resolveField, a first segment of `event` routes to controlled event reads);
 - **readable fields** = `event.event_id` / `event.on` / `event.actor` / `event.at` + payload keys (bound to the `event.<key>` namespace); a payload key's value may be an object (depth ≤2), and guards may read a nested `event.<key>.<sub>` path (depth ≤2), resolved like a fact field path (§3);
 - **a non-existent key** null-propagates to false per E11 (`exists`/`not_exists` can sense absence);
 - **payload strings MUST be NFC-normalized before evaluation (E10)**.
+
+#### 6a.7.3 Transition evaluation context (the input to when)
 
 **Transition evaluation context (the input to when)**: the `when` guard's evaluation context MUST be only the following two kinds, and MUST NOT read free fact:
 
@@ -667,7 +715,11 @@ event:
 
 A guard reading any field outside `state.*` and `event.*` (free fact) MUST be rejected at load (Error, see §6a.2 load-time validation full set).
 
+#### 6a.7.4 Compilation and evaluation discipline
+
 **Compilation and evaluation discipline**: transition evaluation MUST go through the same single compilation pipeline as rule evaluation (E7); its warning / errored conventions are fully consistent with §7.3.
+
+#### 6a.7.5 Time and freshness (no time trigger)
 
 **Time and freshness (no time trigger, MUST)**: the state machine has **no time trigger** — transitions are event-driven only, state never expires on its own. When a "freshness" state (e.g. `fresh`/`stale`) is needed, choose one of two modes:
 
@@ -694,6 +746,8 @@ transitions:
 
 > The engine does not "auto-expire over time" — time exists only as a controlled event attribute (`event.at`) or as a guard time-comparison input, consistent with E9 (no wall clock, controlled `as_of` injection).
 
+---
+
 ### 6a.8 Enforcement-Boundary Check/Act Atomicity (Integration Requirement)
 
 §6a's authority state is consumed by an **enforcement boundary** (the Action Guard / tool-call guard, §9.1) that gates security-sensitive side effects. `evaluate()` is a pure function (E1): it returns a decision plus a `state_snapshot = { values, state_version, transitions_head }` (§7.0.3), but it does **not** itself commit the gated side effect — that commit happens in the enforcement boundary, a distinct component, after `evaluate()` returns and releases the instance lock.
@@ -708,8 +762,6 @@ This leaves a check/act window: `evaluate()` may return `ALLOW` against `state_v
 **Layering (engine vs. boundary)**: the engine MUST expose the re-validation primitive — the current `state_version`/`transitions_head` readable under the instance lock — but it does **not** execute the side effect and does **not** hold the lock across the effect commit on the boundary's behalf (E1: evaluation is pure; the commit is outside the engine). Check/act atomicity is therefore an **integration obligation** the enforcement boundary discharges by re-validating against the engine's snapshot anchor, not an engine-side side-effect-execution guarantee.
 
 **Adversarial conformance vector (V-STATE)**: `authorized@N → evaluate(ALLOW@N) → revoke@N+1 (before effect commit) → attempt the effect`. Expected: the effect MUST NOT execute under the stale `ALLOW`; the boundary re-validates and fails closed (or otherwise closes the boundary). This is the stateful continuation of AV-05 / AV-10 at the execution boundary.
-
----
 
 ## 7. Evaluation Semantics
 
@@ -818,7 +870,9 @@ The kernel explicitly excludes: string concatenation, regex replacement, bitwise
 
 The following semantics MUST be explicitly annotated in the document and vectors, to avoid semantic misunderstanding against standard implementations:
 
-**(a) Null propagation (E11)**: Agent context is highly dynamic; missing fields are the norm. Evaluation MUST use safe failure under three-valued logic:
+#### 7.3(a) Null propagation (E11)
+
+Agent context is highly dynamic; missing fields are the norm. Evaluation MUST use safe failure under three-valued logic:
 
 | Scenario | Behavior |
 |------|------|
@@ -830,13 +884,19 @@ The following semantics MUST be explicitly annotated in the document and vectors
 
 > **Warning asymmetry (must be reproduced exactly across implementations)**: comparison nodes, `between`, and logic nodes (`and`/`or`) over a non-boolean operand fold type mismatches to false **silently** (no warning); whereas `in` (non-array right operand), string nodes (`contains`/`match`/`starts_with`/`ends_with`), `length` (non-string/array), `aggregate` (non-array / non-numeric element), and quantifiers (`all`/`any`/`none`) over a non-array operand record a `type_mismatch` warning — these all set `errored: false` (they are type-mismatch warnings, not E3 EvaluationErrors). This asymmetry is internally consistent in the vector set (e.g. `gt-003` and `E3-002` both have warnings=[]); third-party implementations MUST reproduce it exactly.
 
-**(b) Quantifier safe folding (E8)**: under standard quantifier semantics `all(empty)=true` (vacuous truth). This specification deliberately deviates: `all/any/none(empty)` all fold to false — preventing "nothing to check yet judged as allowed" — and record the safe fold in the audit record. An `over` that is **not an array** (missing/scalar/object) is a `type_mismatch` warning: `all/any/none` fold to `false` with `errored: false`. Third-party implementations MUST adopt this folding semantics.
+#### 7.3(b) Quantifier safe folding (E8)
 
-**(c) Fixed-point intermediate precision (E2)**: intermediate computation uses high-precision bounded rationals (e.g. 128-bit integer numerator/denominator); only output nodes round to scale=14 + half-even string serialization (IEEE 754-2019 ROUND_HALF_EVEN). Conformance compares the **scale-14 fixed-point value** (numerically equal), not the string spelling: trailing zeros are insignificant (`"35"` ≡ `"35.0"`). This "string serialization" is the **evaluation scope** (output precision) and does not enter the canonical_tree hash; the canonical **encoding scope** is §8.2 (JCS number serialization).
+under standard quantifier semantics `all(empty)=true` (vacuous truth). This specification deliberately deviates: `all/any/none(empty)` all fold to false — preventing "nothing to check yet judged as allowed" — and record the safe fold in the audit record. An `over` that is **not an array** (missing/scalar/object) is a `type_mismatch` warning: `all/any/none` fold to `false` with `errored: false`. Third-party implementations MUST adopt this folding semantics.
 
-**(d) Regex ReDoS protection**: the `match` node MUST satisfy: ① single-match step limit ≤10000; ② input length limit; ③ prefer a deterministic engine (RE2-class) or a safe syntax subset. The safe syntax subset MUST be restricted to regular languages: **backreferences (`\1`–`\9`, `\k<name>`) and lookaround (`(?=)` / `(?!)` lookahead, `(?<=)` / `(?<!)` lookbehind) are forbidden** — such non-regular constructs depend on backtracking order, cannot be made byte-deterministic, and cannot be expressed by the SMT verifier (erdl-formal). Inline case flags (`(?i)`) are not provided (matching is always case-sensitive, §5.2). A regex that violates these limits (nested quantifiers, backreferences, lookaround, or a step-limit violation) folds to `false` with a `regex_re_dos` warning and `errored: false` — it is not an E3 EvaluationError.
+#### 7.3(c) Fixed-point intermediate precision (E2)
 
-**(e) aggregate empty-array safe folding**:
+intermediate computation uses high-precision bounded rationals (e.g. 128-bit integer numerator/denominator); only output nodes round to scale=14 + half-even string serialization (IEEE 754-2019 ROUND_HALF_EVEN). Conformance compares the **scale-14 fixed-point value** (numerically equal), not the string spelling: trailing zeros are insignificant (`"35"` ≡ `"35.0"`). This "string serialization" is the **evaluation scope** (output precision) and does not enter the canonical_tree hash; the canonical **encoding scope** is §8.2 (JCS number serialization).
+
+#### 7.3(d) Regex ReDoS protection
+
+the `match` node MUST satisfy: ① single-match step limit ≤10000; ② input length limit; ③ prefer a deterministic engine (RE2-class) or a safe syntax subset. The safe syntax subset MUST be restricted to regular languages: **backreferences (`\1`–`\9`, `\k<name>`) and lookaround (`(?=)` / `(?!)` lookahead, `(?<=)` / `(?<!)` lookbehind) are forbidden** — such non-regular constructs depend on backtracking order, cannot be made byte-deterministic, and cannot be expressed by the SMT verifier (erdl-formal). Inline case flags (`(?i)`) are not provided (matching is always case-sensitive, §5.2). A regex that violates these limits (nested quantifiers, backreferences, lookaround, or a step-limit violation) folds to `false` with a `regex_re_dos` warning and `errored: false` — it is not an E3 EvaluationError.
+
+#### 7.3(e) aggregate empty-array safe folding
 
 | Function | Empty-array result | Basis |
 |------|-----------|------|
@@ -848,7 +908,9 @@ The following semantics MUST be explicitly annotated in the document and vectors
 
 The `over` of `aggregate` MUST be an array; a non-array (missing/scalar/object) returns `null` + `type_mismatch` warning (folded to false). `count(missing)` and `count(empty array)` differ: the former is type_mismatch, the latter is 0.
 
-**(f) Time-node UTC semantics (E9)**: all time nodes evaluate uniformly in UTC, guaranteeing byte-for-byte consistency across implementations and time zones:
+#### 7.3(f) Time-node UTC semantics (E9)
+
+all time nodes evaluate uniformly in UTC, guaranteeing byte-for-byte consistency across implementations and time zones:
 
 - Input parsing: date-only (`YYYY-MM-DD`) parses as UTC; date-time parses per ISO 8601 with timezone (whole-second precision, fractional seconds not supported), and without a timezone suffix as UTC;
 - Component extraction (`date_part`): always takes UTC components;
@@ -858,7 +920,9 @@ The `over` of `aggregate` MUST be an array; a non-array (missing/scalar/object) 
 
 Business local time zone is converted by the engine to a UTC instant when injecting `as_of`; the evaluator computes as a UTC pure function.
 
-**(g) Resource-limit violations (E4) and load-time exclusivity (E5) are constraint-verification results, not evaluation results**: an E4 structural resource-limit violation (nodes / tree-depth / arithmetic-depth / array / quantifier-nesting over the grade limit) **throws** — the engine returns `value: null` with `value_type: "null"` and `threw: true` (not an E3 EvaluationError; `errored` stays `false`). A regex ReDoS violation (§7.3(d)) folds to `false` + `regex_re_dos` (not a throw). An E5 load-time exclusivity violation records `value: true` (= violation detected). The E12 fold and `errored` rules above apply to **evaluation** vectors only.
+#### 7.3(g) Resource-limit violations (E4) and load-time exclusivity (E5) are constraint-verification results, not evaluation results
+
+an E4 structural resource-limit violation (nodes / tree-depth / arithmetic-depth / array / quantifier-nesting over the grade limit) **throws** — the engine returns `value: null` with `value_type: "null"` and `threw: true` (not an E3 EvaluationError; `errored` stays `false`). A regex ReDoS violation (§7.3(d)) folds to `false` + `regex_re_dos` (not a throw). An E5 load-time exclusivity violation records `value: true` (= violation detected). The E12 fold and `errored` rules above apply to **evaluation** vectors only.
 
 ### 7.4 `when` Minimum-Completeness Constraints
 
@@ -903,6 +967,8 @@ The expression tree is the single benchmark object for evaluation, hashing, and 
 
 The DO hash preimage of an evaluation result — its **field order, key set, and absence encoding** — MUST be defined as follows, otherwise two implementations will necessarily compute different hashes (v2.2 added a structured field to the DO, `state_snapshot`, whose local key ordering is defined but whose overall preimage is not — a global anchoring gap):
 
+#### 8.2a.1 Evaluation-result DO field order and fixed key set
+
 **Fixed field order (MUST)**:
 
 ```
@@ -912,6 +978,8 @@ decision → matched_rules → unless_exemptions → primary_instruction → pri
 ```
 
 **Fixed key set (MUST)**: a valueless key is encoded as `null`, keys MUST NOT be omitted (keeping the preimage structure constant); arrays in occurrence order; strings NFC (E10); numbers JCS (§8.2 encoding scope). **Empty-state encoding (MUST)**: list-type fields (`matched_rules`, `unless_exemptions`, `eval_warnings`, `canonical_trees`) encode their empty state as `[]` (key not omitted); only nullable object-type fields (`primary_instruction`/`primary_reason`/`primary_explanation`/`primary_correction`, `temporal_state`, `state_snapshot`) encode as `null` when valueless — arrays are always arrays, objects may be null, a unique boundary.
+
+#### 8.2a.2 Transition-chain audit-record preimage (three kinds)
 
 **Transition-chain audit-record preimage field order (MUST, three kinds)**: the transition chain is composed of three kinds of audit records — successful transition (`type: "transition"`), transition error (`type: "transition_error"`), and genesis (`type: "genesis"`). The three have different field sets; **their respective field order and fixed key set MUST be as follows** (the `type` field enters the preimage to distinguish kinds):
 
@@ -1039,6 +1107,8 @@ If the input is changed to `amount: 100`, the rule does not match, and the `meta
 
 See §4.2 (Simple rule), §5.3 (Expression rule), and §5.4 (Decision Table).
 
+#### 10.2.1 State-block complete example (§6a)
+
 **State-block complete example (§6a)**:
 
 ```yaml
@@ -1083,6 +1153,8 @@ rules:
 
 > Note: the `state` block is already updated by events (`transitions`) before rules evaluation; `state.*` is controlled injection (§6a.3), not a fact field.
 
+#### 10.2.2 Evaluation output example (with `state_snapshot`)
+
 **Evaluation output example (with `state_snapshot`, a V-STATE prototype)**: after the above example undergoes two events — `bootstrap` (authorize) and `revoke` (revoke) — the rule evaluation outputs:
 
 ```yaml
@@ -1108,9 +1180,15 @@ as_of: "2026-09-12T10:00:00Z"
 
 ### 10.3 Conformance Verification
 
-The semantics of this specification MUST be proven by independently recomputable test vectors. The expression-layer vectors (V-ENGINE / V-GLOSS / V-PROJ) cover: 34 nodes × 4 scenarios (normal/boundary/exception/empty), E1–E12 semantics, the Simple 30-operator compile mapping, and gloss rendering templates; the **state-layer vectors (V-STATE)** cover all MUST semantics of §6a: event-object validation (`event_id`/`on`/`actor`/`at`/`payload` restricted load), same-variable conflict check (0)–(4) positive/negative cases and same-event `audit_as` consistency, single-event multi-rule atomicity (stop at the first EvaluationError, commit all at once on full pass), guard-error fail-closed with `transition_error` chain position (no set applied / no version increment / no head movement), `state_version`/`transitions_head` replay verification, duplicate `event_id` idempotent drop, unmatched-event silence, load failure for rules referencing `event.*` / undeclared `state.*`, catch-all vs explicit-rule two-pass interaction, and enforcement-boundary check/act re-validation (the `authorized@N → ALLOW@N → revoke@N+1` fail-closed vector, §6a.8).
+#### 10.3.1 Vector coverage
+
+The semantics of this specification MUST be proven by independently recomputable test vectors. The expression-layer vectors (V-ENGINE / V-GLOSS / V-PROJ) cover: 34 nodes × 4 scenarios (normal/boundary/exception/empty), E1–E12 semantics, the Simple 30-operator compile mapping, and gloss rendering templates; the **state-layer vectors (V-STATE)** cover all MUST semantics of §6a: event-object validation (`event_id`/`on`/`actor`/`at`/`payload` restricted load), same-variable conflict check (0)–(4) positive/negative cases and same-event `audit_as` consistency, single-event multi-rule atomicity (stop at the first EvaluationError, commit all at once on full pass), guard-error fail-closed with `transition_error` chain position (no set applied / no version increment / no head movement), `state_version`/`transitions_head` replay verification, duplicate `event_id` idempotent drop, unmatched-event silence, load failure for rules referencing `event.*` / undeclared `state.*`, catch-all vs explicit-rule two-pass interaction, and enforcement-boundary check/act re-validation (`authorized@N → ALLOW@N → revoke@N+1` before effect commit, fail-closed, §6a.8).
+
+#### 10.3.2 Five-step verification
 
 **Five-step verification**: load vector input → generate expression tree → recompute evaluation result → compare with the answer → judge consistency.
+
+#### 10.3.3 Third-party Runner verification flow (from zero to conformance)
 
 **Third-party Runner verification flow (from zero to conformance)**:
 
@@ -1235,17 +1313,19 @@ Rules with function delegation (Grade C) MUST explicitly mark "contains non-reco
 | Version | Date | Changes |
 |------|------|------|
 | v2.2 | 2026-09-14 | §6a.8 new: enforcement-boundary check/act atomicity (integration requirement) — for §6a-dependent security-sensitive side effects, the boundary MUST re-validate or close the synchronous boundary so no authorization-lineage state change commits between decision and effect; the engine exposes the re-validation primitive, the boundary discharges the obligation (E1 purity preserved); V-STATE adds the `authorized@N → ALLOW@N → revoke@N+1 → attempt-effect` fail-closed vector |
-| v2.2 | 2026-09-12 | New §6a state blocks and state transitions (controlled state source): `state`/`transitions` optional top-level fields; controlled state injection (`state.*` reuses the field node, no new nodes); resource caps (≤4 variables/2–4 enums/≤256 combinations/≤32 transition rules/≤16 event names/≤8-key payload); state-transition audit closure (transition chain + snapshot + validity + provenance anchoring: `state_snapshot` extended to {values,state_version,transitions_head}, keys code-point-ascending by state-variable name + string NFC normalization); same-variable conflict decidable mutual-exclusion check ((0)-(4) sound constraints: unconditional-unique + top-level-conjunct-only proof basis, reject rather than silently accept); §6a.7 event and transition evaluation context (event object event_id/on/at/actor/payload; guards read only state.* + event.*, not free fact); event-handling atomicity (evaluate guards one by one in definition order → stop at the first EvaluationError committing no set, fail-closed → commit all sets at once on full pass; order within one event must not affect the result); event injection authentication (actor enters the audit record, unauthenticated events rejected); genesis record (initial generates an initial snapshot + canonical-tree hash); concurrency serialization (event handling and evaluate are mutually exclusive); load-time validation full set (any expression position referencing an undeclared state.<name>, a field exactly "state", or a transitions.when referencing free fact are all rejected); state scoping (only a first-segment-`state` path enters the controlled namespace, context.state.* still resolves as fact but lint warns); `decision` renamed `audit_as` (audit carrier only, does not participate in evaluation/short-circuit, narrowed to {ALLOW,NOTIFY,DELEGATE,ESCALATE,REQUEST_HUMAN}); `transitions` gains `enabled` (default true) and `reason` constraint (`[a-z][a-z0-9_]{0,31}` + document-unique); `state` gains `display_name` (bilingual, gloss uses en falling back to name); `transitions.when` node whitelist (Simple conditions + time nodes; no quantifiers/arithmetic/aggregates/fn/within/rate); state machine has no time trigger (freshness via external sweeper or guard time comparison); §7.0.2 evaluation algorithm gains an events-happen-first declaration (step 0) and catch-all lazy two-pass, fixes the WORKFLOW cross-reference (state machine split: §6 workflow / §6a authority); §7.0.3 adds the `state_snapshot` output field (enters the hash preimage); E1 extends the authority-state snapshot as a controlled external input; glossary adds state variable / state space / state transition / controlled injection / state_snapshot / transition validity |
-| v2.1 | 2026-09-12 | §8.2 pins the canonical encoding of number literals to JCS (RFC 8785) IEEE 754 number serialization (aligned with the reference implementation); distinguishes the *evaluation* convention (E2 fixed-point) from the *encoding* convention (§8.2 canonical serialization) |
-| v2.1 | 2026-09-12 | E12 clarifies Guard-context semantics (a Guard context fail-closes for all tiers; a non-Guard context fail-closes tier≤2 and folds tier 3–5 to false); glossary adds non-Guard context / evaluation scope / encoding scope; §7.3(a) spells out the missing-field arithmetic split (comparison node→false, arith node→EvaluationError); §7.0.2/§7.0.3 aligned with E12 |
-| v2.1 | 2026-09-10 | §7.3(c) clarifies conformance compares the scale-14 fixed-point value **numerically** (trailing-zero insensitive: `"35"` ≡ `"35.0"`), not the string spelling — the decimal-string form is an *encoding*, not the comparison unit |
-| v2.1 | 2026-09-10 | §7.3(a) extends the warning asymmetry to logic nodes (`and`/`or` over a non-boolean operand fold silently) and quantifiers (`all`/`any`/`none` over a non-array operand record `type_mismatch`); §7.3(b) clarifies quantifier non-array `over`; §7.3(d) clarifies the ReDoS fold (`false` + `regex_re_dos`, `errored: false`); §7.3(g) new: E4 structural resource-limit violations throw (`value: null` + `threw: true`), E5 exclusivity records `value: true`; §5.5 adds gloss rendering details (not(eq) normalization, quoted string/list literals, parenthesized arithmetic) |
-| v2.1 | 2026-09-10 | §7.3(a) clarifies the `errored` reading in the warning asymmetry: `in`/string/`length`/`aggregate` record a `type_mismatch` warning but `errored: false` (a warning only, not an E3 EvaluationError) |
-| v2.1 | 2026-09-09 | §7.3(a) annotates the warning asymmetry (comparison/`between` fold silently with no warning; `in`/string/`length`/`aggregate` record `type_mismatch`); §5.5 aligns gloss template wording to the renderer (`in`/`between`/`length`/`match`/`epoch_ms`/`date_part`/`date_add`/`aggregate`/`quantifier`/`var`) |
-| v2.1 | 2026-09-09 | §5.5 pins gloss rendering to English canonical (G3 display_name takes the English value; Chinese template is a presentation-only optional projection) |
-| v2.1 | 2026-09-09 | §7.2 E3 / §7.3(a) / Appendix E add the `errored` evaluation-error flag: EvaluationError (division by zero / invalid date / arity / type-mismatched arithmetic) → `errored=true` (even though E12 folds to false); type-mismatched comparison and null propagation → `errored=false` (not an error) |
-| v2.1 | 2026-09-05 | §7.1 adds item 6: an empty-condition rule (catch-all/fallback) MUST NOT rewrite the decision established by an explicit-condition rule (in either direction); the fallback takes effect only when no explicit rule matches |
-| v2.1 | 2026-09-05 | §7.3(f) clarifies date-time input parsing is whole-second precision (fractional seconds not supported), aligned across implementations |
+| v2.2 | 2026-09-12 | New §6a state blocks and state transitions (controlled state source): `state`/`transitions` optional top-level fields; controlled state injection (`state.*` reuses the field node, no new nodes); resource caps (≤4 variables/2–4 enums/≤256 combinations/≤32 transition rules/≤16 event names/≤8-key payload) |
+| v2.2 | 2026-09-12 | State-transition audit closure: transition chain + snapshot + validity + provenance anchoring; `state_snapshot` extended to {values,state_version,transitions_head}, keys code-point-ascending by state-variable name + string NFC normalization |
+| v2.2 | 2026-09-12 | Same-variable conflict decidable mutual-exclusion check ((0)-(4) sound constraints: unconditional-unique + top-level-conjunct-only proof basis, reject rather than silently accept) |
+| v2.2 | 2026-09-12 | §6a.7 event and transition evaluation context: event object event_id/on/at/actor/payload; guards read only state.* + event.*, not free fact |
+| v2.2 | 2026-09-12 | Event-handling atomicity (evaluate guards one by one in definition order → stop at the first EvaluationError committing no set, fail-closed → commit all sets at once on full pass; order within one event must not affect the result); event injection authentication (actor enters the audit record, unauthenticated events rejected); concurrency serialization (event handling and evaluate are mutually exclusive); genesis record (initial generates an initial snapshot + canonical-tree hash) |
+| v2.2 | 2026-09-12 | Load-time validation full set (any expression position referencing an undeclared state.<name>, a field exactly "state", or a transitions.when referencing free fact are all rejected); state scoping (only a first-segment-`state` path enters the controlled namespace, context.state.* still resolves as fact but lint warns) |
+| v2.2 | 2026-09-12 | `decision` renamed `audit_as` (audit carrier only, does not participate in evaluation/short-circuit, narrowed to {ALLOW,NOTIFY,DELEGATE,ESCALATE,REQUEST_HUMAN}); `transitions` gains `enabled` (default true) and `reason` constraint (`[a-z][a-z0-9_]{0,31}` + document-unique); `state` gains `display_name` (bilingual, gloss uses en falling back to name) |
+| v2.2 | 2026-09-12 | `transitions.when` node whitelist (Simple conditions + time nodes; no quantifiers/arithmetic/aggregates/fn/within/rate); state machine has no time trigger (freshness via external sweeper or guard time comparison) |
+| v2.2 | 2026-09-12 | §7.0.2 evaluation algorithm gains an events-happen-first declaration (step 0) and catch-all lazy two-pass, fixes the WORKFLOW cross-reference (state machine split: §6 workflow / §6a authority); §7.0.3 adds the `state_snapshot` output field (enters the hash preimage); E1 extends the authority-state snapshot as a controlled external input; glossary adds state variable / state space / state transition / controlled injection / state_snapshot / transition validity |
+| v2.1 | 2026-09-12 | §8.2 pins the canonical encoding of number literals to JCS (RFC 8785) IEEE 754 number serialization (aligned with the reference implementation); distinguishes the *evaluation* convention (E2 fixed-point) from the *encoding* convention (§8.2 canonical serialization); E12 clarifies Guard-context semantics (a Guard context fail-closes for all tiers; a non-Guard context fail-closes tier≤2 and folds tier 3–5 to false); glossary adds non-Guard context / evaluation scope / encoding scope; §7.3(a) spells out the missing-field arithmetic split (comparison node→false, arith node→EvaluationError); §7.0.2/§7.0.3 aligned with E12 |
+| v2.1 | 2026-09-10 | §7.3(c) clarifies conformance compares the scale-14 fixed-point value **numerically** (trailing-zero insensitive: `"35"` ≡ `"35.0"`), not the string spelling — the decimal-string form is an *encoding*, not the comparison unit; §7.3(a) extends the warning asymmetry to logic nodes (`and`/`or` over a non-boolean operand fold silently) and quantifiers (`all`/`any`/`none` over a non-array operand record `type_mismatch`); §7.3(b) clarifies quantifier non-array `over`; §7.3(d) clarifies the ReDoS fold (`false` + `regex_re_dos`, `errored: false`); §7.3(g) new: E4 structural resource-limit violations throw (`value: null` + `threw: true`), E5 exclusivity records `value: true`; §5.5 adds gloss rendering details (not(eq) normalization, quoted string/list literals, parenthesized arithmetic); §7.3(a) clarifies the `errored` reading: `in`/string/`length`/`aggregate` record a `type_mismatch` warning but `errored: false` (a warning only, not an E3 EvaluationError) |
+| v2.1 | 2026-09-09 | §7.3(a) annotates the warning asymmetry (comparison/`between` fold silently with no warning; `in`/string/`length`/`aggregate` record `type_mismatch`); §5.5 aligns gloss template wording to the renderer (`in`/`between`/`length`/`match`/`epoch_ms`/`date_part`/`date_add`/`aggregate`/`quantifier`/`var`); §5.5 pins gloss rendering to English canonical (G3 display_name takes the English value; Chinese template is a presentation-only optional projection); §7.2 E3 / §7.3(a) / Appendix E add the `errored` evaluation-error flag: EvaluationError (division by zero / invalid date / arity / type-mismatched arithmetic) → `errored=true` (even though E12 folds to false); type-mismatched comparison and null propagation → `errored=false` (not an error) |
+| v2.1 | 2026-09-05 | §7.1 adds item 6: an empty-condition rule (catch-all/fallback) MUST NOT rewrite the decision established by an explicit-condition rule (in either direction); the fallback takes effect only when no explicit rule matches; §7.3(f) clarifies date-time input parsing is whole-second precision (fractional seconds not supported), aligned across implementations |
 | v2.1 | 2026-09-04 | §7.3(d) clarifies the safe syntax subset as a regular language: backreferences (`\1`–`\9`, `\k<name>`) and lookaround (`(?=)`/`(?!)`/`(?<=)`/`(?<!)`) are forbidden; inline case flags are not provided (matching is always case-sensitive) |
 | v2.1 | 2026-09-03 | §4.1 adds three optional fields — `category` (rule-level override), `enabled` (enable flag), `correction` (CORRECT fix text) — completing the field table and fixed order; §7.0.3 adds the `primary_correction` source cross-reference. Protocol `erdl/v2` unchanged; rule-format version 2.0.0 → 2.1.0 (additive optional fields, non-breaking) |
 | v2.0 | 2026-08-30 | Finalized |
