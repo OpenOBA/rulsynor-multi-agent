@@ -694,6 +694,21 @@ transitions:
 
 > 引擎不负责「随时间自动过期」——时间只作为事件的受控属性（`event.at`）或守卫的时间比较输入存在，与 E9（禁墙钟、as_of 受控注入）一致。
 
+### 6a.8 执行边界 check/act 原子性（集成要求）
+
+§6a 的授权状态由**执行边界**（Action Guard / 工具调用守卫，§9.1）消费，用于门控安全敏感副作用。`evaluate()` 是纯函数（E1）：它返回决策与 `state_snapshot = { values, state_version, transitions_head }`（§7.0.3），但**不亲自**提交被门控的副作用——提交发生在执行边界这一独立组件中，于 `evaluate()` 返回并释放实例锁之后。
+
+由此留下 check/act 窗口：`evaluate()` 可能基于 `state_version = N` 返回 `ALLOW`，随后一条 `revoke` 事件在效果落地前提交 `state_version = N+1`，导致效果在已失效的授权谱系下执行。
+
+**执行边界重校验（MUST）**：对授权依赖 §6a 状态的安全敏感副作用，执行边界 MUST 保证：在「用于授权决策的状态版本」与「受保护效果的提交」之间，任何影响授权谱系的状态变更事件不得提交。合规边界通过以下任一方式满足：
+
+1. **原子重校验**：在提交效果前，于实例锁（§6a.5）下重读文档当前 `{ state_version, transitions_head }`，与决策的 `state_snapshot` 比对；任一不匹配即 fail-closed（不执行——按不可用/过期授权处理，AV-05/AV-10/AV-14 语义）；或
+2. **等效同步边界封闭**：将相关锁（或等效串行化保证）持有至效果提交完成，使任何转移事件都无法在 check 与 act 之间插入。
+
+**分层（引擎 vs 边界）**：引擎 MUST 暴露重校验原语——当前 `state_version`/`transitions_head` 可在实例锁下读取——但**不**执行副作用，也**不**替边界在效果提交期间持有锁（E1：求值纯、提交在引擎之外）。故 check/act 原子性是执行边界通过「对照引擎快照锚点重校验」来履行的**集成义务**，而非引擎侧的副作用执行保证。
+
+**对抗性合规向量（V-STATE）**：`authorized@N → evaluate(ALLOW@N) → revoke@N+1（效果提交前）→ 尝试执行效果`。期望：该效果 MUST NOT 在过期的 `ALLOW` 下执行；边界重校验并 fail-closed（或等效封闭边界）。这是 AV-05 / AV-10 在执行边界的**有状态延续**。
+
 ---
 
 ## 7. 求值语义
@@ -1093,7 +1108,7 @@ as_of: "2026-09-12T10:00:00Z"
 
 ### 10.3 一致性验证
 
-本规范的语义 MUST 由可独立重算的测试向量证明。表达层向量（V-ENGINE / V-GLOSS / V-PROJ）覆盖：34 节点 × 4 场景（正常/边界/异常/空值）、E1-E12 语义、Simple 30 运算符编译映射、gloss 渲染模板；**状态层向量（V-STATE）**覆盖 §6a 全部 MUST 语义：事件对象校验（`event_id`/`on`/`actor`/`at`/`payload` 受限负载）、同变量冲突检查 (0)–(4) 正/反例与同事件 `audit_as` 一致性、单事件多规则原子性（遇首个 EvaluationError 即停止、全过则一次性提交）、守卫错误 fail-closed 与 `transition_error` 链位置（不应用 set/不递增版本/不移动 head）、`state_version`/`transitions_head` 重放验证、重复 `event_id` 幂等丢弃、无匹配事件静默、规则侧引用 `event.*`/未声明 `state.*` 加载失败、catch-all 与显式规则两趟交互。
+本规范的语义 MUST 由可独立重算的测试向量证明。表达层向量（V-ENGINE / V-GLOSS / V-PROJ）覆盖：34 节点 × 4 场景（正常/边界/异常/空值）、E1-E12 语义、Simple 30 运算符编译映射、gloss 渲染模板；**状态层向量（V-STATE）**覆盖 §6a 全部 MUST 语义：事件对象校验（`event_id`/`on`/`actor`/`at`/`payload` 受限负载）、同变量冲突检查 (0)–(4) 正/反例与同事件 `audit_as` 一致性、单事件多规则原子性（遇首个 EvaluationError 即停止、全过则一次性提交）、守卫错误 fail-closed 与 `transition_error` 链位置（不应用 set/不递增版本/不移动 head）、`state_version`/`transitions_head` 重放验证、重复 `event_id` 幂等丢弃、无匹配事件静默、规则侧引用 `event.*`/未声明 `state.*` 加载失败、catch-all 与显式规则两趟交互、执行边界 check/act 重校验（`authorized@N → ALLOW@N → revoke@N+1` 于效果提交前、fail-closed，§6a.8）。
 
 **五步验证法**：加载向量输入 → 生成表达式树 → 重算求值结果 → 与答案对比 → 判定一致。
 
@@ -1200,6 +1215,8 @@ as_of: "2026-09-12T10:00:00Z"
 | 状态转移（state transition） | 事件触发的确定性状态变更 `state.<name> ← value`（状态机 F 函数，§6a.2） |
 | 受控注入（controlled injection） | 引擎持有的输入（as_of/temporal_state/state.*），外部不可写，仅由引擎机制更新（§6a.3、E1） |
 | state_snapshot | 求值时状态快照，进 DO 哈希原像（§6a.5） |
+| 执行边界（enforcement boundary） | 消费 §6a 决策并提交被门控副作用的组件（Action Guard / 工具调用守卫，§6a.8） |
+| check/act 原子性 | §6a.8 义务：授权决策与被门控副作用提交之间，无授权谱系状态变更落地 |
 | 转移合法性（transition validity） | 引擎验证转移：仅执行声明的转移、值属枚举、未声明转移不执行（fail-closed） |
 | as_of | 引擎注入的求值时刻（UTC，E9） |
 | 事实对象（fact） | 求值输入，承载 Entity 当前状态（§7.0.1） |
@@ -1217,6 +1234,7 @@ as_of: "2026-09-12T10:00:00Z"
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v2.2 | 2026-09-14 | 新增 §6a.8 执行边界 check/act 原子性（集成要求）——授权依赖 §6a 状态的安全敏感副作用，执行边界 MUST 重校验或封闭同步边界，使决策与效果之间无授权谱系状态变更落地；引擎暴露重校验原语、边界履行义务（保留 E1 纯性）；V-STATE 增 `authorized@N → ALLOW@N → revoke@N+1 → 尝试执行效果` 的 fail-closed 向量 |
 | v2.2 | 2026-09-12 | 新增 §6a 状态块与状态转移（受控状态源）：`state`/`transitions` 两个可选顶层字段、状态受控注入（`state.*` 复用 field 节点，不新增节点）、资源上限（≤4 变量/2–4 枚举/≤256 组合/≤32 转移规则/≤16 事件名/≤8 键 payload）、状态转移审计闭环（转移链+快照+合法性+出处锚定：`state_snapshot` 扩展为 {values,state_version,transitions_head}，键按状态变量名码点升序+字符串 NFC 规范化）、同变量冲突可判定互斥检查（(0)-(4) sound 约束：无条件唯一+仅顶层合取项作证明依据，宁拒勿纵）、§6a.7 事件与转移求值上下文（事件对象 event_id/on/at/actor/payload、守卫只读 state.*+event.* 不读自由 fact）、事件处理原子性（按定义顺序逐条求值→遇首个 EvaluationError 即停止不提交任何 set fail-closed→全过则一次性提交；单事件内顺序不影响结果）、事件注入认证（actor 进审计记录、未认证拒绝）、genesis 记录（initial 生成初始快照+规范树哈希）、并发串行化（事件处理与 evaluate 互斥）、加载时校验全集（任意表达式位置引用未声明 state.<name>、field 恰为 state、transitions.when 引用自由 fact 均拒绝）、状态作用域（仅首段为 state 进受控命名空间，context.state.* 仍走 fact 但 lint 警告）；`decision` 更名 `audit_as`（仅审计承载、不参与求值/短路，取值收窄为 {ALLOW,NOTIFY,DELEGATE,ESCALATE,REQUEST_HUMAN}）；`transitions` 增 `enabled`（默认 true）、`reason` 约束（`[a-z][a-z0-9_]{0,31}`+文档内唯一）；`state` 增 `display_name`（双语，gloss 取 en 回退 name）；`transitions.when` 节点白名单（Simple 条件+时间节点，禁量词/算术/聚合/fn/within/rate）；状态机无时间触发器（新鲜度靠外部 sweeper 或守卫时间比对）；§7.0.2 求值算法补事件先行声明（步骤 0）与 catch-all 惰性两趟、修正 WORKFLOW 交叉引用（状态机区分 §6 工作流 / §6a 授权）；§7.0.3 新增 `state_snapshot` 输出字段（进哈希原像）；E1 扩展授权状态快照为受控外部输入；术语表补状态变量/状态空间/状态转移/受控注入/state_snapshot/转移合法性 |
 | v2.1 | 2026-09-12 | §8.2 字面量规范的数字 canonical 编码定为 JCS（RFC 8785）IEEE 754 number 序列化（对齐参考实现）；区分「求值口径」（E2 定点小数）与「编码口径」（§8.2 canonical 序列化） |
 | v2.1 | 2026-09-12 | E12 明确 Guard 上下文语义（Guard 上下文覆盖所有 tier 一律 fail-close；非 Guard 上下文 tier≤2 fail-close、tier 3–5 折叠 false）；术语表补「非 Guard 上下文」「求值口径」「编码口径」；§7.3(a) 明确字段缺失算术分界（比较节点→false、算术节点→EvaluationError）；§7.0.2/§7.0.3 与 E12 口径统一 |

@@ -229,7 +229,7 @@ above A2A transport, in the Rulsynor organization layer.
 | INV-03 narrow-only | ⚠️ `constraints` exist, no narrowing check | **feasible** — compare inherited vs. downstream constraints |
 | INV-04 enforcement-boundary revocation | ❌ H10 `Revoke` is single-hop; no propagation to unexercised derived authority | **largest gap** — needs revocation state + boundary check (shared, eventually-consistent state; same track as `within`/`rate` state) |
 | INV-04 freshness (normative) | ❌ freshness was implementation-defined | **feasible** — promote to normative: absence ≠ proof; monotonic authority epoch; fail closed (see §7 Q7) |
-| INV-04 check/act atomicity (TOCTOU) | ⚠️ implicit in synchronous boundary, unstated | **feasible** — state that the authority check and the gated side effect share one synchronous boundary |
+| INV-04 check/act atomicity (TOCTOU) | ✅ landed — SPEC §6a.8 normative integration requirement | the engine exposes the re-validation primitive; the boundary re-validates or closes the boundary |
 | INV-04 tombstone ↔ re-grant | ❌ re-grant semantics undefined | **feasible** — tombstone matches the exact `revokes` DO id; a re-grant is a new id/new basis, not a resurrection |
 | INV-05 capability boundary | ❌ explicit TODO; Action Guard "block on breach" only | **feasible, medium** — formalize the axis; tool-call guard already gates |
 | INV-05 task-scoped credential | ❌ not stated | **feasible** — boundary enforces that the side effect runs under the task envelope, not the tool's standing credential (boundary-mediation caveat) |
@@ -431,7 +431,7 @@ aggregation, AV-05/AV-10 revocation): it computes the effective `authorized.*` v
 expression layer then compares. The expression layer remains the sole decision authority; the
 organization layer derives its inputs, never the other way around.
 
-**Snapshot vs stateful boundary.** The fourteen vectors are snapshot-evaluated: for AV-05/AV-13 (revocation), AV-08 (sequence replay), AV-10 (freshness) and AV-14 (unavailable state), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05).
+**Snapshot vs stateful boundary.** The fourteen vectors are snapshot-evaluated: for AV-05/AV-13 (revocation), AV-08 (sequence replay), AV-10 (freshness) and AV-14 (unavailable state), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05). The check/act gap at the execution boundary (a `revoke` landing between an `ALLOW` decision and the gated side effect's commit) is now closed by SPEC §6a.8 as a normative integration requirement, with a V-STATE fail-closed vector — the stateful continuation of AV-05/AV-10.
 
 ---
 
