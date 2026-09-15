@@ -230,6 +230,7 @@ above A2A transport, in the Rulsynor organization layer.
 | INV-04 enforcement-boundary revocation | ❌ H10 `Revoke` is single-hop; no propagation to unexercised derived authority | **largest gap** — needs revocation state + boundary check (shared, eventually-consistent state; same track as `within`/`rate` state) |
 | INV-04 freshness (normative) | ❌ freshness was implementation-defined | **feasible** — promote to normative: absence ≠ proof; monotonic authority epoch; fail closed (see §7 Q7) |
 | INV-04 check/act atomicity (TOCTOU) | ✅ landed — SPEC §6a.8 normative integration requirement | the engine exposes the re-validation primitive; the boundary re-validates or closes the boundary |
+| INV-04 anti-rollback freshness (latest authoritative head) | ✅ landed — SPEC §6a.9 normative integration requirement | replay verification proves integrity/provenance, not freshness; the enforcement/recovery boundary MUST establish the latest authoritative head (not superseded) before authorizing a security-sensitive side effect; fail closed when freshness cannot be established |
 | INV-04 tombstone ↔ re-grant | ❌ re-grant semantics undefined | **feasible** — tombstone matches the exact `revokes` DO id; a re-grant is a new id/new basis, not a resurrection |
 | INV-05 capability boundary | ❌ explicit TODO; Action Guard "block on breach" only | **feasible, medium** — formalize the axis; tool-call guard already gates |
 | INV-05 task-scoped credential | ❌ not stated | **feasible** — boundary enforces that the side effect runs under the task envelope, not the tool's standing credential (boundary-mediation caveat) |
@@ -352,6 +353,8 @@ revocation state, only one fresh enough to authorize safely. Concretely, with a 
 authority epoch (no trusted wall clock — E9 forbids reading one), "fresh enough" means "the
 boundary's observed revocation epoch ≥ the epoch at which the authority-bearing evidence was last
 confirmed valid".
+
+**Anti-rollback (latest authoritative head).** §6a.9 extends freshness to the state-chain level: hash-chain replay verification proves a snapshot is consistent with a *valid* transition-chain prefix, but not that the prefix is the *latest* authoritative one. Across restart/recovery/replica boundaries, a valid-but-superseded historical prefix must not be replayed into a current authorization. The enforcement/recovery boundary MUST establish that the accepted `{state_version, transitions_head}` is the latest authoritative head (not superseded by a later authoritative state for the same document instance) before authorizing a security-sensitive side effect. The mechanism stays implementation-neutral (monotonic external epoch / durable latest-head anchor / signed-versioned checkpoint / consensus-backed version / equivalent); fail closed when freshness cannot be established.
 
 **Q8 — Capability Boundary Semantics.**
 A *distinct capability-boundary relationship* with equivalent non-amplification semantics, not
