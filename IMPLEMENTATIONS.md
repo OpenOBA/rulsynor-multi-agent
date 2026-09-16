@@ -18,6 +18,7 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 | Implementor | Method | Result | Date | Artifact |
 |------------|--------|:-------:|------|---------|
 | **OpenOBA (reference)** | Node.js, @openoba/erdl engine | 14/14 | 2026-09-12 | [runner.mjs](reference/runner.mjs) |
+| **ravindra-annam-python-independent** | Python 3 stdlib, spec-only independent expression-tree evaluator; no OpenOBA SDK/reference runner | 14/14 | 2026-09-15 | [rulsynor-multi-agent](https://github.com/RavindraAnnam/rulsynor-multi-agent) |
 <!-- registry:auto-end -->
 
 > Third-party runner submissions are auto-recorded here by `reference/update-registry.mjs`
