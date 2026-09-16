@@ -4,6 +4,14 @@ All notable changes to this repository are documented here.
 This is a co-review repository — the delegated-authority design and conformance vectors are
 reviewed against the ERDL language specification (`erdl-language-spec-v2.2.md` / `.en.md`).
 
+## 2026-09-16
+
+### Added
+- **SPEC §6b.4 basis-scoped revocation (multi-root composition)** — a subject's effective authority is the union over its currently-valid authorization bases; `revoke(basis-X)` removes exactly basis-X's derivable authority (no less — full transitive closure; no more — other bases' contribution survives); MUST NOT reduce a subject's authority to a global per-subject revoked/authorized bit (forbids over-/under-revocation); a surviving basis MUST NOT preserve authority unique to a revoked lineage; refines INV-04's "downstream subtree" to be basis-relative. Glossary adds `authorization basis`. (Annam finding 4, issue #4.)
+
+### Changed
+- **DESIGN.md** — gap table adds `INV-04 basis-scoped revocation (multi-root composition)` (✅ landed — SPEC §6b.4).
+
 ## 2026-09-15
 
 ### Added
