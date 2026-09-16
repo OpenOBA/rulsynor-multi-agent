@@ -1,0 +1,120 @@
+{
+  "runner": "ravindra-annam-python-independent",
+  "method": "Python 3 stdlib, spec-only independent expression-tree evaluator; no OpenOBA SDK/reference runner",
+  "date": "2026-09-15",
+  "artifact": "https://github.com/RavindraAnnam/rulsynor-multi-agent",
+  "results": {
+    "AV-01": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "A→B",
+      "requested_action": "refund(level=L3)",
+      "effective_authority": "refund(level=L2)",
+      "reason": "AUTHORITY_NON_AMPLIFICATION"
+    },
+    "AV-02": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "B→C",
+      "requested_action": "refund(level=L3)",
+      "effective_authority": "refund(level=L2)",
+      "reason": "TRANSITIVE_AUTHORITY_AMPLIFICATION"
+    },
+    "AV-03": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "A→B",
+      "requested_action": "write(Resource-R)",
+      "effective_authority": "read(Resource-R)",
+      "reason": "PRIVILEGED_DELEGATE_LAUNDERING"
+    },
+    "AV-04": {
+      "decision": "DENY",
+      "matched_invariant": "INV-03",
+      "first_invalid_boundary": "B→C",
+      "requested_action": "refund(amount=5000)",
+      "effective_authority": "refund(amount=500)",
+      "reason": "CONSTRAINT_NARROW_ONLY_VIOLATION"
+    },
+    "AV-05": {
+      "decision": "DENY",
+      "matched_invariant": "INV-04",
+      "first_invalid_boundary": "P→A",
+      "requested_action": "exercise(derived-authority)",
+      "effective_authority": "revoked (P→A revoked)",
+      "reason": "ENFORCEMENT_BOUNDARY_REVOCATION"
+    },
+    "AV-06": {
+      "decision": "DENY",
+      "matched_invariant": "INV-05",
+      "first_invalid_boundary": "T→R",
+      "requested_action": "write(Resource-R)",
+      "effective_authority": "read(Resource-R)",
+      "reason": "CAPABILITY_BOUNDARY_AUTHORITY_AMPLIFICATION"
+    },
+    "AV-07": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "D→E",
+      "requested_action": "delegate(D→E)",
+      "effective_authority": "max depth 3 (4 edges attempted)",
+      "reason": "DELEGATION_DEPTH_VIOLATION"
+    },
+    "AV-08": {
+      "decision": "DENY",
+      "matched_invariant": "INV-02",
+      "first_invalid_boundary": "A→B",
+      "requested_action": "accept(T, replayed-delegation)",
+      "effective_authority": "chain_seq must be unconsumed",
+      "reason": "SEQUENCE_REPLAY"
+    },
+    "AV-09": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "A→B",
+      "requested_action": "consume(delegation-2, amount=500)",
+      "effective_authority": "amount<=500 shared cumulative budget",
+      "reason": "AGGREGATION_NON_AMPLIFICATION"
+    },
+    "AV-10": {
+      "decision": "DENY",
+      "matched_invariant": "INV-04",
+      "first_invalid_boundary": "P→A",
+      "requested_action": "exercise(protected-action)",
+      "effective_authority": "AUTHORITY_STATE_UNVERIFIED (stale-negative)",
+      "reason": "REVOCATION_FRESHNESS_STALE"
+    },
+    "AV-11": {
+      "decision": "DENY",
+      "matched_invariant": "INV-01",
+      "first_invalid_boundary": "A→B",
+      "requested_action": "delegate(T, B)",
+      "effective_authority": "non-delegatable basis",
+      "reason": "DELEGATION_AUTHORITY_VIOLATION"
+    },
+    "AV-12": {
+      "decision": "DENY",
+      "matched_invariant": "INV-02",
+      "first_invalid_boundary": "B",
+      "requested_action": "execute(T, as-B)",
+      "effective_authority": "bound to key-B only",
+      "reason": "IDENTITY_BINDING_VIOLATION"
+    },
+    "AV-13": {
+      "decision": "DENY",
+      "matched_invariant": "INV-04",
+      "first_invalid_boundary": "P→A",
+      "requested_action": "reverse(completed-action)",
+      "effective_authority": "completed before revocation (no reversal)",
+      "reason": "NO_REVERSAL_OF_COMPLETED_ACTION"
+    },
+    "AV-14": {
+      "decision": "DENY",
+      "matched_invariant": "INV-04",
+      "first_invalid_boundary": "P→A",
+      "requested_action": "exercise(protected-action)",
+      "effective_authority": "AUTHORITY_STATE_UNAVAILABLE (state absent)",
+      "reason": "AUTHORITY_STATE_UNAVAILABLE"
+    }
+  }
+}
