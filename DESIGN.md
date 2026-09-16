@@ -222,7 +222,7 @@ above A2A transport, in the Rulsynor organization layer.
 |---|---|---|
 | Authorization basis (`Auth`) | ❌ absent — §3 had flattened EA onto constraints | **largest conceptual gap** — add an `authorization_basis` reference (root grant or re-authorization DO id) as the base of the EA derivation; all other gaps hang off this one |
 | INV-01 containment check | ⚠️ structural separation exists, containment check absent | **feasible** — add a delegation-time check that `constraints ⊆ delegator's EA`; the primitives exist |
-| INV-01 aggregation (numeric) | ❌ not defined | **feasible** — bind `amount` to a shared cumulative budget on the origin authorization; reuse the `within`/`rate` state operator |
+| INV-01 aggregation (numeric) | ✅ landed — SPEC §6b.2 INV-01 (shared cumulative budget, not a per-delegation allowance) | aggregate consumption across child grants against one bounded origin MUST satisfy aggregate conservation (AV-09) |
 | INV-02 provenance | ✅ strong (`parent_audit_id`, `execution_trace_id`, cross-agent audit chain) | formalize as invariant |
 | INV-02 temporal continuity | ⚠️ Phase-4 time-bias is *heuristic WARN*, not a MUST | **feasible** — elevate to attributable DENY on positive replay detection |
 | INV-02 renew = re-authorization | ❌ renew unaddressed | **feasible** — a renewal widens the temporal window; it must pass the same basis verification as re-authorization |
@@ -236,9 +236,9 @@ above A2A transport, in the Rulsynor organization layer.
 | INV-05 capability boundary | ❌ explicit TODO; Action Guard "block on breach" only | **feasible, medium** — formalize the axis; tool-call guard already gates |
 | INV-05 task-scoped credential | ❌ not stated | **feasible** — boundary enforces that the side effect runs under the task envelope, not the tool's standing credential (boundary-mediation caveat) |
 | Purpose constraint (audit vs enforcement) | ❌ purpose treated as enforceable | **layering** — purpose is semantic and non-decidable; keep it audit-layer (DO provenance), and require an explicit structural mapping (action/resource) if it must be enforced |
-| Delegation authority (who may DELEGATE) | ❌ not stated | **feasible** — add a `delegatable` flag on the basis; DELEGATE validates the issuer's delegatability |
-| Identity binding (impersonation) | ❌ not stated | **feasible** — bind the basis to a cryptographic identity (key), not an agent-ID string; enforcement verifies identity binding |
-| AV-07 depth/loop | ✅ `max_delegation_depth` + loop rejection exist | fold into INV-01 sub-property |
+| Delegation authority (who may DELEGATE) | ✅ landed — SPEC §6b.2 INV-01 (delegation is a privilege, not a default) | a subject MAY delegate only if its basis is `delegatable`; a delegation on a non-delegatable basis MUST be rejected (AV-11) |
+| Identity binding (impersonation) | ✅ landed — SPEC §6b.2 INV-02 (cryptographic binding) | the exercising identity MUST be bound to the chain's declared identity by a cryptographic key, not a forgeable name string (AV-12) |
+| AV-07 depth/loop | ✅ landed — SPEC §6b.2 INV-01 (bounded delegation depth) | the chain depth MUST be bounded; a conforming config declares a max depth and rejects delegations exceeding it (AV-07) |
 | AV-08 sequence replay | ✅ landed (re-scoped from wall-clock) | `chain_seq` continuity check |
 | Attributable rejection | ✅ Decision Object carries decision + reason; missing `matched_invariant`/`boundary` | **feasible** — two new DO fields |
 
