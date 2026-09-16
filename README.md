@@ -49,7 +49,7 @@ rogue-agent creation · `AV-12` identity impersonation · `AV-13` completed-acti
 
 ## Documents
 
-- [`erdl-language-spec-v2.2.md`](erdl-language-spec-v2.2.md) / [`.en.md`](erdl-language-spec-v2.2.en.md) — the ERDL language specification; §6a (single-instance state FSM) and §6b (delegated-authority security model: INV-01~05, temporal validity, basis-scoped revocation) carry the normative semantics of the invariants.
+- [`erdl-language-spec-v2.2.md`](erdl-language-spec-v2.2.md) / [`.en.md`](erdl-language-spec-v2.2.en.md) — the ERDL language specification; §6a (single-instance state FSM) and §6b (delegated-authority security model: INV-01~05, revocation freshness, basis-scoped revocation) carry the normative semantics of the invariants.
 - [`DESIGN.md`](DESIGN.md) — design document mapping the invariants onto Rulsynor primitives,
   answering the co-review questions, and stating where the property is already enforced versus
   where a gap remains.
