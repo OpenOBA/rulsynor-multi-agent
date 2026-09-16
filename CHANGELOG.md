@@ -8,10 +8,9 @@ reviewed against the ERDL language specification (`erdl-language-spec-v2.2.md` /
 
 ### Added
 - **SPEC §6b.4 basis-scoped revocation (multi-root composition)** — a subject's effective authority is the union over its currently-valid authorization bases; `revoke(basis-X)` removes exactly basis-X's derivable authority (no less — full transitive closure; no more — other bases' contribution survives); MUST NOT reduce a subject's authority to a global per-subject revoked/authorized bit (forbids over-/under-revocation); a surviving basis MUST NOT preserve authority unique to a revoked lineage; refines INV-04's "downstream subtree" to be basis-relative. Glossary adds `authorization basis`. (Annam finding 4, issue #4.)
-- **SPEC §6b close-out** — INV-01 adds unauthorized-delegation (delegation is a privilege requiring a `delegatable` basis) and bounded delegation-depth violation shapes + normative assertions; INV-02 pins identity binding to a cryptographic key (not a forgeable name string); INV-01 aggregate conservation clarified as a shared cumulative budget; §6b.3 renamed to temporal validity and adds basis expiry (distinct from revocation freshness). Glossary adds `delegatable`.
 
 ### Changed
-- **DESIGN.md** — gap table adds `INV-04 basis-scoped revocation (multi-root composition)` (✅ landed — SPEC §6b.4); marks `INV-01 aggregation` / `Delegation authority` / `Identity binding` / `AV-07 depth` as ✅ landed.
+- **DESIGN.md** — gap table adds `INV-04 basis-scoped revocation (multi-root composition)` (✅ landed — SPEC §6b.4).
 
 ## 2026-09-15
 
