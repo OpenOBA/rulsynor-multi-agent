@@ -7,7 +7,7 @@
   "properties": {
     "id": { "type": "string", "description": "Vector id, e.g. AV-01" },
     "family": { "const": "delegated-authority" },
-    "profile": { "enum": ["stateless", "snapshot"], "description": "stateless = no time/revocation semantics (pure current-state fact); snapshot = revocation/temporal semantics modeled by materializing timestamps into the fact (single-evaluate snapshot, NOT an event-history state machine — event-history is a future ERDL extension)" },
+    "profile": { "enum": ["stateless", "snapshot"], "description": "stateless = no time/revocation semantics (pure current-state fact); snapshot = revocation/temporal semantics modeled by materializing state into the fact (single-evaluate snapshot, NOT an event-history state machine — event-history is a future ERDL extension). Snapshot materializes timestamps (AV-05/08/10/13), sequence numbers (AV-08), or revocation-derived state: authorization-root provenance (AV-15) and basis-scoped effective-authority union (AV-16)" },
     "invariant": { "enum": ["INV-01", "INV-02", "INV-03", "INV-04", "INV-05"], "description": "Primary invariant (single-valued; the matched_invariant source). Supporting invariants (e.g. AV-02's INV-02) and uncovered variants (e.g. AV-07's loop) are noted in the vector's description." },
     "description": { "type": "string" },
     "rule": {
@@ -61,7 +61,21 @@
         "violation_hop": { "type": "string", "description": "first hop where the authority transition became invalid (= first_invalid_boundary)" },
         "requested_action": { "type": "string", "description": "the protected effect requested, e.g. write(Resource-R)" },
         "effective_authority": { "type": "string", "description": "the effective task authority, e.g. read(Resource-R)" },
-        "reason": { "type": "string", "description": "machine-readable attribution code (non-normative free text)" }
+        "reason": { "type": "string", "description": "machine-readable attribution code (non-normative free text)" },
+        "bases": {
+          "type": "array",
+          "description": "Multi-root authorization bases (SPEC §6b.4): each basis carries its lineage identity, granted scope, and revocation state — the audit trail proving effective_authority is the union of currently-valid bases, not a per-subject global bit (over-/under-revocation forbidden).",
+          "items": {
+            "type": "object",
+            "required": ["id", "lineage", "granted_scope", "revoked"],
+            "properties": {
+              "id": { "type": "string", "description": "basis identifier (e.g. basis-X)" },
+              "lineage": { "type": "string", "description": "authority lineage (e.g. P1→A→B)" },
+              "granted_scope": { "type": "array", "items": { "type": "string" }, "description": "actions granted by this basis" },
+              "revoked": { "type": "boolean", "description": "whether this basis has been revoked (INV-04)" }
+            }
+          }
+        }
       }
     }
   }

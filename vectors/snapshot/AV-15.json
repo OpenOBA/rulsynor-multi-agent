@@ -1,0 +1,36 @@
+{
+  "id": "AV-15",
+  "family": "delegated-authority",
+  "profile": "snapshot",
+  "invariant": "INV-04",
+  "description": "Re-authorization without authorization-root provenance: root P authorizes A; P revokes; A (the non-root subject) triggers re-authorize so the state returns to authorized; A then attempts a protected effect. The re-established authorization must be attributed to an authorization root (a new valid authorization basis), not to the subject itself (SPEC §6a.10).",
+  "rule": {
+    "id": "INV-04_reauthorization_root_provenance",
+    "name": "INV-04_reauthorization_root_provenance",
+    "description": "A re-established authorization (authorized) must carry authorization-root provenance; an authorized state re-established without it must not be exercisable",
+    "category": "security",
+    "conditions": [
+      { "expr": { "and": [
+        { "eq": [{ "field": "state" }, "authorized"] },
+        { "eq": [{ "field": "authorization_root_provenance" }, false] }
+      ] } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "re-authorization lacks authorization-root provenance (INV-04 / §6a.10)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "state": "authorized", "authorization_root_provenance": false },
+  "legal": { "state": "authorized", "authorization_root_provenance": true },
+  "attribution": {
+    "originating_task": "T-reauth-0916",
+    "authority_provenance": "P→A",
+    "violation_hop": "A→A",
+    "requested_action": "re-authorize(revoked-authorization)",
+    "effective_authority": "authorized (no authorization-root provenance)",
+    "reason": "REAUTHORIZATION_WITHOUT_ROOT_PROVENANCE"
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "AV-16",
+  "family": "delegated-authority",
+  "profile": "snapshot",
+  "invariant": "INV-04",
+  "description": "Multi-root basis-scoped revocation: P1→A→B grants {read, write} (basis-X); P2→C→B independently grants {read} (basis-Y); revoke(P1→A). B's write (derivable only through the revoked basis-X) must be DENY; B's read (derivable through the still-valid basis-Y) must be ALLOW (SPEC §6b.4).",
+  "rule": {
+    "id": "INV-04_multi_root_basis_scoped_revocation",
+    "name": "INV-04_multi_root_basis_scoped_revocation",
+    "description": "A requested action must be derivable from a currently-valid authorization basis; an action derivable only from a revoked basis must not be exercisable",
+    "category": "security",
+    "conditions": [
+      { "expr": { "not": { "in": [{ "field": "request.action" }, { "field": "effective_authority.scope" }] } } }
+    ],
+    "conditionLogic": "AND",
+    "action": {
+      "decision": "DENY",
+      "reason": "requested action not derivable from a currently-valid authorization basis (INV-04 / §6b.4 basis-scoped revocation)"
+    },
+    "priority": 1,
+    "enabled": true
+  },
+  "attack": { "request.action": "write", "effective_authority.scope": ["read"] },
+  "legal": { "request.action": "read", "effective_authority.scope": ["read"] },
+  "attribution": {
+    "originating_task": "T-multiroot-0916",
+    "authority_provenance": "P1→A→B (basis-X) + P2→C→B (basis-Y)",
+    "violation_hop": "P1→A",
+    "requested_action": "write(Resource-X)",
+    "effective_authority": "read(Resource-X) via still-valid basis-Y",
+    "reason": "BASIS_SCOPED_REVOCATION_UNDER_REVOCATION",
+    "bases": [
+      { "id": "basis-X", "lineage": "P1→A→B", "granted_scope": ["read", "write"], "revoked": true },
+      { "id": "basis-Y", "lineage": "P2→C→B", "granted_scope": ["read"], "revoked": false }
+    ]
+  }
+}
