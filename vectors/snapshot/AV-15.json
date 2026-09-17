@@ -11,7 +11,7 @@
     "category": "security",
     "conditions": [
       { "expr": { "and": [
-        { "eq": [{ "field": "state" }, "authorized"] },
+        { "eq": [{ "field": "authorization_state" }, "authorized"] },
         { "eq": [{ "field": "authorization_root_provenance" }, false] }
       ] } }
     ],
@@ -23,8 +23,8 @@
     "priority": 1,
     "enabled": true
   },
-  "attack": { "state": "authorized", "authorization_root_provenance": false },
-  "legal": { "state": "authorized", "authorization_root_provenance": true },
+  "attack": { "authorization_state": "authorized", "authorization_root_provenance": false },
+  "legal": { "authorization_state": "authorized", "authorization_root_provenance": true },
   "attribution": {
     "originating_task": "T-reauth-0916",
     "authority_provenance": "P→A",
