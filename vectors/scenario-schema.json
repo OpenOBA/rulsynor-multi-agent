@@ -3,7 +3,7 @@
   "title": "Delegated-Authority Conformance Vector (ERDL-anchored)",
   "description": "One delegated-authority conformance vector. The verdict is produced by the ERDL expression engine (erdl-landing) evaluating the vector's rule over its scenario context — per DESIGN.md §8a, not a hand-written state machine. Each vector carries an ERDL rule (when constraint-comparison → then DENY), an attack context (violating), a legal context (non-violating baseline), and the expected attribution.",
   "type": "object",
-  "required": ["id", "family", "profile", "invariant", "rule", "attack", "legal", "expected"],
+  "required": ["id", "family", "profile", "invariant", "rule", "attack", "legal", "attribution"],
   "properties": {
     "id": { "type": "string", "description": "Vector id, e.g. AV-01" },
     "family": { "const": "delegated-authority" },

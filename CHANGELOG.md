@@ -4,6 +4,18 @@ All notable changes to this repository are documented here.
 This is a co-review repository — the delegated-authority design and conformance vectors are
 reviewed against the ERDL language specification (`erdl-language-spec-v2.2.md` / `.en.md`).
 
+## 2026-09-17
+
+### Added
+- **Conformance vectors AV-15 + AV-16** — AV-15 (re-authorization provenance, SPEC §6a.10, issue #3): non-root re-authorization without authorization-root provenance → DENY; AV-16 (multi-root basis-scoped revocation, SPEC §6b.4, issue #4): write via revoked basis-X → DENY, read via still-valid basis-Y → ALLOW. Each is a single vector with attack (→DENY) / legal (→ALLOW) sides. `scenario-schema.json` adds a `bases` array to `attribution` (lineage identity as the union-derivation audit trail).
+
+### Changed
+- **SPEC §6a.10 / §6b.4** — V-STATE cases annotated with their conformance vector ids (AV-15 / AV-16).
+- **SPEC §6b.5** — adversarial vector family title aligned from "AV-01~14 + AV-15/16" to "AV-01~16"; fixed the "two vectors" wording (AV-15/16 are single vectors each with attack/legal sides, not two independent DENY/ALLOW vectors).
+- **DESIGN.md §9 Q1** — vector-format question settled: multi-root materializes the basis-scoped effective-authority union (`effective_authority.scope`) which the expression layer compares against `request.action`; the `bases` array is retained in `attribution` as the audit trail (organization layer EA-folds, expression layer compares — no new evaluation machinery).
+- **DESIGN.md / README.md / IMPLEMENTATIONS.md / reference/README.md** — vector count synchronized 14 → 16.
+- **CONFORMANCE.md** — regenerated (16/16 attack, 16/16 legal, PASS).
+
 ## 2026-09-16
 
 ### Added
