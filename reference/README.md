@@ -8,7 +8,7 @@ Status: **14-vector set** (AV-01…AV-14): 9 stateless (pure current-state facts
 | Profile | Vectors |
 |---|---|
 | `stateless` | AV-01/02/03/04/06/07/09/11/12 |
-| `snapshot` | AV-05 (revocation) / AV-08 (sequence replay) / AV-10 (freshness) / AV-13 (completed-action no-reversal) / AV-14 (unavailable state) |
+| `snapshot` | AV-05 (revocation) / AV-08 (sequence replay) / AV-10 (freshness) / AV-13 (completed-action no-reversal) / AV-14 (unavailable state) / AV-15 (re-authorization provenance) / AV-16 (multi-root basis-scoped revocation) |
 
 ## The load-bearing principle (DESIGN.md §8a)
 
@@ -19,9 +19,9 @@ and a legal context; `Evaluator.evaluate(rule, context)` emits the decision, and
 id encodes the invariant. A vector that does not exercise ERDL rule evaluation proves nothing
 about ERDL.
 
-## The fourteen vectors — one per adversarial scenario
+## The sixteen vectors — one per adversarial scenario
 
-The full table lives in the root [README](../README.md#the-fourteen-adversarial-conformance-vectors).
+The full table lives in the root [README](../README.md#the-sixteen-adversarial-conformance-vectors).
 Each vector carries an **attack** context (violating → DENY + a matched invariant) and a **legal**
 context (non-violating → ALLOW), so the rule is proven to be a detector, not an indiscriminate
 DENY. The AV-13 dual (completed-action no-reversal) additionally blocks over-revocation.
@@ -80,7 +80,7 @@ system, not an ERDL-conforming one.
 ## Run the reference locally
 
 ```bash
-node reference/runner.mjs                    # ERDL-engine verdict over the 14 vectors (expect 14 passed)
+node reference/runner.mjs                    # ERDL-engine verdict over the 16 vectors (expect 16 passed)
 node reference/full-test.mjs                 # full positive/negative suite (consistency + discriminability)
 node reference/submission-e2e.test.mjs       # cross-verify pipeline e2e (field corruption discrimination)
 node reference/generate-conformance.mjs      # regenerate conformance/CONFORMANCE.md

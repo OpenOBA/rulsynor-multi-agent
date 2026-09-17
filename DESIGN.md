@@ -71,7 +71,7 @@ The source note has eleven sections. This design document responds to all of the
 
 ## 2. Adoption — invariants and vectors (faithful)
 
-We adopt the five invariants and the fourteen vectors (AV-01…14) — the eight originals **as proposed by Ravindra Annam**, plus six additions from our own co-review (AV-09…12 + the AV-13 completed-action dual + AV-14 unavailable state), with
+We adopt the five invariants and the sixteen vectors (AV-01…16) — the eight originals **as proposed by Ravindra Annam**, plus six additions from our own co-review (AV-09…12 + the AV-13 completed-action dual + AV-14 unavailable state), plus two further vectors from the security review (AV-15 re-authorization provenance from issue #3, AV-16 multi-root basis-scoped revocation from issue #4), with
 his names and definitions (faithfully summarized; full text in the source).
 
 | Invariant | Definition (verbatim from source) |
@@ -390,8 +390,8 @@ ERDL rule evaluation proves nothing about ERDL.
 
 **The enforcement boundary is a set of ERDL rules.** Each invariant is expressed as one (or a
 small group of) ERDL rule whose `when` condition is the constraint comparison and whose `then`
-action is the conforming decision. The fourteen vectors (AV-01..AV-14, aligned to the source conformance matrix) map directly onto the expression
-layer's native condition operators (`gt` / `ne`, from `OP_COMPARE`) — no new evaluation machinery:
+action is the conforming decision. The sixteen vectors (AV-01..AV-16) map directly onto the expression
+layer's native condition operators (from `OP_COMPARE` / `OP_LIST`) — no new evaluation machinery:
 
 | Vector | ERDL rule (`when → then`) | Context fields the rule reads |
 |---|---|---|
@@ -409,6 +409,8 @@ layer's native condition operators (`gt` / `ne`, from `OP_COMPARE`) — no new e
 | AV-12 (INV-02) | `executor.identity ≠ bound.identity → DENY` | `executor.identity`, `bound.identity` |
 | AV-13 (INV-04) | `completion_t ≥ revocation_t → DENY` | `completion_t`, `revocation_t` (snapshot) |
 | AV-14 (INV-04) | `not_exists(revocation.epoch) → DENY` | `revocation.epoch` absent (snapshot) |
+| AV-15 (INV-04) | `state=authorized ∧ authorization_root_provenance=false → DENY` | `state`, `authorization_root_provenance` (snapshot) |
+| AV-16 (INV-04) | `request.action ∉ effective_authority.scope → DENY` | `request.action`, `effective_authority.scope` (snapshot) |
 
 Attribution is carried by the rule, not by a side channel: the matched rule's identity encodes
 `matched_invariant`; the injected-violation hop encodes `first_invalid_boundary`. `Evaluator`
@@ -425,7 +427,7 @@ contract* — as norviq-go and concordia-python independently implement the Deci
 folding from scratch without evaluating ERDL rules is a parallel system, not an ERDL-conforming
 one.
 
-**Where the organization layer enters — and why the pilot does not need it yet.** The fourteen
+**Where the organization layer enters — and why the pilot does not need it yet.** The sixteen
 vectors are snapshot-evaluated: the "authorized" side of each comparison is statically given in
 the scenario (AV-01's `authorized.level = L2` is fixed by the origin grant),
 so the expression layer alone produces the verdict; no authority state machine is required. The
@@ -435,7 +437,7 @@ aggregation, AV-05/AV-10 revocation): it computes the effective `authorized.*` v
 expression layer then compares. The expression layer remains the sole decision authority; the
 organization layer derives its inputs, never the other way around.
 
-**Snapshot vs stateful boundary.** The fourteen vectors are snapshot-evaluated: for AV-05/AV-13 (revocation), AV-08 (sequence replay), AV-10 (freshness) and AV-14 (unavailable state), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05). The check/act gap at the execution boundary (a `revoke` landing between an `ALLOW` decision and the gated side effect's commit) is now closed by SPEC §6a.8 as a normative integration requirement, with a V-STATE fail-closed vector — the stateful continuation of AV-05/AV-10.
+**Snapshot vs stateful boundary.** The sixteen vectors are snapshot-evaluated: for AV-05/AV-13 (revocation), AV-08 (sequence replay), AV-10 (freshness), AV-14 (unavailable state), AV-15 (re-authorization provenance) and AV-16 (multi-root basis-scoped revocation), the suite proves the engine reaches the correct decision **given materialized state** — it does not prove cross-request revocation propagation or event-history retention. The progression — snapshot decision conformance → explicit authority/revocation state → controlled transitions → boundary-time lineage evaluation — is a change in what the suite *establishes*, not in the underlying invariants (INV-01..INV-05). The check/act gap at the execution boundary (a `revoke` landing between an `ALLOW` decision and the gated side effect's commit) is now closed by SPEC §6a.8 as a normative integration requirement, with a V-STATE fail-closed vector — the stateful continuation of AV-05/AV-10.
 
 ---
 
@@ -475,16 +477,23 @@ unilaterally:
    one controlled violation + expected decision + expected attribution), distinct from the
    byte-identity Decision Object vectors. We have no precedent to copy; what shape should the
    scenario carry?
+   **Settled (issue #4 follow-up, AV-16):** multi-root basis-scoped revocation materializes the
+   *basis-scoped effective-authority union* into the fact (`effective_authority.scope`), which the
+   expression layer compares against `request.action` per §8a (the organization layer EA-folds,
+   the expression layer compares). The `bases` array (each basis's `lineage` + `granted_scope` +
+   `revoked`) is retained in `attribution` as the audit trail proving the union is basis-scoped,
+   not a per-subject global bit. The expression layer is not asked to re-fold the union (that is
+   organization-layer work), and no new evaluation machinery is introduced.
 2. **Conformance standard.** Two independent implementations will agree on the *decision*, but
    should they also agree on the *attribution* (`matched_invariant` / `boundary` / `reason`)? This
    determines what "passing" means for an independent runner.
-3. **Stateless vs. snapshot split.** Of the 14 vectors, 9 are stateless (pure current-state facts:
-   AV-01..04, AV-06..09, AV-11, AV-12) and 5 are snapshot-evaluated for revocation/temporal state
+3. **Stateless vs. snapshot split.** Of the 16 vectors, 9 are stateless (pure current-state facts:
+   AV-01..04, AV-06..09, AV-11, AV-12) and 7 are snapshot-evaluated for revocation/temporal state
    (AV-05 revocation, AV-08 sequence replay, AV-10 freshness, AV-13 completed-action no-reversal,
-   AV-14 unavailable state).
+   AV-14 unavailable state, AV-15 re-authorization provenance, AV-16 multi-root basis-scoped revocation).
    Every vector carries a `legal` baseline (→ ALLOW), so a deny-all implementation fails on the
    legal side; the AV-13 dual additionally blocks over-revocation. We propose landing the 9
-   stateless vectors first, then the 5 snapshot ones; do you agree with that ordering?
+   stateless vectors first, then the 7 snapshot ones; do you agree with that ordering?
 4. **Revocation freshness mechanism.** For the stateful vectors we lean on a monotonic authority
    epoch + fail-closed (DENY when freshness cannot be established). Is that an acceptable
    mechanism, or do you have a stronger preference?
@@ -493,7 +502,7 @@ unilaterally:
 
 ## 10. Our audit of the vector suite (co-review findings)
 
-The fourteen vectors are a strong adversarial set, but a rigorous review surfaces one scientific
+The fourteen vectors (AV-01..AV-14, audited before AV-15/16 were added) are a strong adversarial set, but a rigorous review surfaces one scientific
 issue, one completeness gap, one suite-level gap, and several precision notes. We raise these as
 peer-review findings, each with a proposed resolution — co-review goes both ways.
 

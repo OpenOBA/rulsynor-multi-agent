@@ -17,7 +17,7 @@ audit — lives here.
 ## What this is
 
 This repository holds a candidate security model for **delegated authority in multi-agent
-systems**: five runtime invariants and fourteen adversarial conformance vectors that bound effective
+systems**: five runtime invariants and sixteen adversarial conformance vectors that bound effective
 authority throughout a multi-hop execution chain.
 
 The invariants were **proposed by Ravindra Annam** ("Delegated Authority Security Invariants and
@@ -38,14 +38,15 @@ policy engine, token format, or enforcement mechanism.
 | **INV-04** | Enforcement-Boundary Revocation |
 | **INV-05** | Capability-Boundary Non-Amplification |
 
-## The fourteen adversarial conformance vectors
+## The sixteen adversarial conformance vectors
 
 `AV-01` direct amplification · `AV-02` transitive amplification · `AV-03` privileged delegate
 laundering · `AV-04` downstream constraint removal · `AV-05` revoked ancestor · `AV-06`
 capability-boundary laundering · `AV-07` delegation depth/loop violation · `AV-08` sequence
 replay · `AV-09` aggregation amplification · `AV-10` stale-negative revocation · `AV-11`
 rogue-agent creation · `AV-12` identity impersonation · `AV-13` completed-action no-reversal ·
-`AV-14` unavailable authority state.
+`AV-14` unavailable authority state · `AV-15` re-authorization provenance · `AV-16` multi-root
+basis-scoped revocation.
 
 ## Documents
 
