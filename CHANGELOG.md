@@ -4,6 +4,11 @@ All notable changes to this repository are documented here.
 This is a co-review repository — the delegated-authority design and conformance vectors are
 reviewed against the ERDL language specification (`erdl-language-spec-v2.2.md` / `.en.md`).
 
+## 2026-09-27
+
+### Changed
+- **§7.1 item 5**: `override` on a DENY is inert — tightening (DENY/ROLLBACK/QUARANTINE covering an ALLOW) is the default, does not compare ring, and needs no override. Synced with erdl-landing.
+
 ## 2026-09-17
 
 ### Added
