@@ -4,6 +4,11 @@ All notable changes to this repository are documented here.
 This is a co-review repository — the delegated-authority design and conformance vectors are
 reviewed against the ERDL language specification (`erdl-language-spec-v2.2.md` / `.en.md`).
 
+## 2026-09-28
+
+### Changed
+- **§7.1 items 2/6 wording + override-absent sort**: item 2 states "sort by `override` level"; item 6 unifies "`when` is the literal `true`"; `override` absent sorts as "default normal" (erdl-formal rank 4 → 2). Synced with erdl-landing; closes erdl-vectors#4 SPEC-REVIEW A/B/C.
+
 ## 2026-09-27
 
 ### Changed

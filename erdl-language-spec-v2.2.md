@@ -964,11 +964,11 @@ fact:
 ### 7.1 优先级与冲突解决
 
 1. 按 `priority` 从小到大排序（值越小越先）；
-2. 同 priority 有 `override` 标记的排前；
+2. 同 priority 按 `override` 级别排序（`critical` > `high` > `normal` > `low`）；
 3. `override` 枚举：`critical` > `high` > `normal` > `low`（默认 `normal`）；
 4. 同 priority 同 override 按定义顺序；
 5. `override` 仅允许 DENY → ALLOW 方向覆盖（不得覆盖到更不安全状态）；`override` 为 `critical`/`high` 时跨 ring 生效：一个更高 ring 的 override ALLOW 可覆盖较低 ring 的 DENY（**不比较 ring**）；**收紧方向（DENY / ROLLBACK / QUARANTINE 覆盖 ALLOW）是「不得覆盖到更不安全状态」的默认推论，不比较 ring、无需 `override`（`override` 挂在收紧决策上无效、不影响收紧）**——覆盖只可朝更安全方向（收紧）自由发生，朝更不安全方向（放松）须 `override` 显式授权；
-6. **空条件规则（catch-all / 兜底）不得改写显式条件规则所确立的决议**：`when` 为空（无条件命中）的规则，无论 `then` 是 DENY 还是 ALLOW，也无论是否携带 `override`，都 MUST NOT 推翻任何显式条件（`when` 非空）规则已建立的决策。兜底规则仅在**没有任何显式条件规则命中**时才生效（§5.4 决策表「默认行」同义）。依据：兜底规则代表「其余情形」的弱、通用意图，显式条件规则代表「特定情形」的强、特定意图；令兜底改写显式决议属「覆盖到更不安全状态」，违反第 5 条的安全单调性。
+6. **空条件规则（catch-all / 兜底）不得改写显式条件规则所确立的决议**：`when` 为字面量 `true`（无条件命中）的规则，无论 `then` 是 DENY 还是 ALLOW，也无论是否携带 `override`，都 MUST NOT 推翻任何显式条件（`when` 非字面量 `true`）规则已建立的决策。兜底规则仅在**没有任何显式条件规则命中**时才生效（§5.4 决策表「默认行」同义）。依据：兜底规则代表「其余情形」的弱、通用意图，显式条件规则代表「特定情形」的强、特定意图；令兜底改写显式决议属「覆盖到更不安全状态」，违反第 5 条的安全单调性。
 
 ### 7.2 求值约束（E1–E12，全部 MUST）
 
@@ -1443,6 +1443,7 @@ as_of: "2026-09-12T10:00:00Z"
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| v2.2 | 2026-09-28 | §7.1 措辞澄清 + override 缺席排序对齐：item 2 明确「同 priority 按 `override` 级别排序（critical > high > normal > low）」；item 6 统一「`when` 为字面量 `true`」；`override` 缺席排序对齐「默认 normal」（erdl-formal 缺席 rank 4 → 2）——清除 erdl-vectors#4 待确认-A/B/C |
 | v2.2 | 2026-09-27 | §7.1 第 5 条补收紧方向明示并修正 override 挂 DENY 的语义：DENY / ROLLBACK / QUARANTINE 覆盖 ALLOW（收紧）是「不得覆盖到更不安全状态」的默认推论，不比较 ring、无需 `override`（`override` 挂在收紧决策上无效）；`override` 仅作用于放松方向（DENY → ALLOW）——回应 erdl-vectors PR#5 R08 的规范歧义 |
 | v2.2 | 2026-09-17 | 落实 conformance 向量 AV-15（re-authorization provenance，§6a.10）与 AV-16（multi-root basis-scoped revocation，§6b.4）——各为 attack（→DENY）/legal（→ALLOW）双面的单一向量；§6a.10/§6b.4 的 V-STATE 标注对应向量编号；§6b.5 对抗向量族由「AV-01~14 + AV-15/16」对齐为「AV-01~16」（修正「两向量」表述：AV-15/16 非两个独立 DENY/ALLOW 向量，而是各含双面） |
 | v2.2 | 2026-09-16 | 新增 §6b.4 按授权基础收敛的撤销（basis-scoped revocation，多根组合）——主体有效权威是其当前有效各授权基础可导出权威的并集；`revoke(basis-X)` 移除恰恰好 basis-X 可导出的权威（不多：下游完整传递闭包；不少：其他授权基础的贡献保留）；MUST NOT 把主体权威归约为单一主体级全局 revoked/authorized 位（禁止过撤销与欠撤销）；存活授权基础 MUST NOT 保留只属于已撤销谱系的权威；将 INV-04 的「下游子树」细化为按授权基础相对；术语表新增 authorization basis |

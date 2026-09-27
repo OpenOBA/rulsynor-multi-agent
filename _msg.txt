@@ -1,0 +1,3 @@
+docs(spec): §7.1 措辞澄清 + override 缺席排序对齐（与 erdl-landing 同步）
+
+item 2/6 措辞澄清 + override 缺席排序对齐；修订历史表 + CHANGELOG 同步。
