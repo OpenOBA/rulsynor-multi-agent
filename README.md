@@ -45,7 +45,7 @@ laundering · `AV-04` downstream constraint removal · `AV-05` revoked ancestor 
 capability-boundary laundering · `AV-07` delegation depth/loop violation · `AV-08` sequence
 replay · `AV-09` aggregation amplification · `AV-10` stale-negative revocation · `AV-11`
 rogue-agent creation · `AV-12` identity impersonation · `AV-13` completed-action no-reversal ·
-`AV-14` unavailable authority state · `AV-15` re-authorization provenance · `AV-16` multi-root
+`AV-14` unavailable authority state
 basis-scoped revocation.
 
 ## Documents

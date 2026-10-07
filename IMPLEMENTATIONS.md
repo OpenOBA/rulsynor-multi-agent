@@ -8,7 +8,7 @@ Inclusion implies no endorsement — only "who passed how many vectors on what d
 ## Current vector set
 
 - **Standard**: ERDL delegated-authority invariants (INV-01..INV-05), anchored on the ERDL expression engine (DESIGN.md §8a)
-- **Vector files**: `vectors/stateless/*.json` + `vectors/snapshot/*.json` (16 vectors: AV-01..AV-16, aligned to the source conformance matrix)
+- **Vector files**: `vectors/stateless/*.json` + `vectors/snapshot/*.json` (14 vectors: AV-01..AV-14, aligned to the source conformance matrix)
 - **Verifier**: `reference/runner.mjs` (reference implementation, evaluates via erdl-landing) + `reference/verify-submission.mjs` + `reference/update-registry.mjs` (auto-record, post-merge)
 - **Answer file**: `answers.json` (`.gitignore`; never exposed to submitters)
 
@@ -32,7 +32,7 @@ Submissions for a previous vector set — not cross-verified against the current
 
 ## Snapshot vs stateful boundary
 
-For AV-05, AV-08, AV-10, AV-13, AV-14, AV-15 and AV-16, the current suite proves that the engine reaches the correct decision **given materialized state** — it should not be described as proving cross-request revocation propagation or event-history retention.
+For AV-05, AV-08, AV-10, AV-13 and AV-14, the current suite proves that the engine reaches the correct decision **given materialized state** — it should not be described as proving cross-request revocation propagation or event-history retention.
 
 The progression is, and remains:
 

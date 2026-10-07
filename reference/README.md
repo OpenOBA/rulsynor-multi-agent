@@ -8,7 +8,7 @@ Status: **14-vector set** (AV-01…AV-14): 9 stateless (pure current-state facts
 | Profile | Vectors |
 |---|---|
 | `stateless` | AV-01/02/03/04/06/07/09/11/12 |
-| `snapshot` | AV-05 (revocation) / AV-08 (sequence replay) / AV-10 (freshness) / AV-13 (completed-action no-reversal) / AV-14 (unavailable state) / AV-15 (re-authorization provenance) / AV-16 (multi-root basis-scoped revocation) |
+| `snapshot` | AV-05 (revocation) / AV-08 (sequence replay) / AV-10 (freshness) / AV-13 (completed-action no-reversal) / AV-14 (unavailable state) |
 
 ## The load-bearing principle (DESIGN.md §8a)
 
